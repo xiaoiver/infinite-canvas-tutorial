@@ -1,0 +1,2685 @@
+{
+  "schema": 1,
+  "presentationRoundedToDecimals": 3,
+  "mode": "continuous-input-investigation-report",
+  "base": "2c0ea6b4641794f863013f9ea2c8bdf06766e07d",
+  "implementation": {
+    "local": "43af21321ac974eb88777a086fd87d173b7444cd",
+    "public": "5a9681aede94cdd747674eabff9b77bbff2581c5",
+    "tree": "81d7d09ab578c6736f1fbaf803a8127ea227dee9"
+  },
+  "idleBoundaryCorrection": {
+    "local": "f13e0754b043857cc228b9e0141c803e25008509",
+    "public": "94ec9abf3830fe806868a5f2bc81a9eb241e5db4",
+    "tree": "d764a2ae40ceb9b6f7aee259544c9a9151b792c1",
+    "previousQualifiedSummariesUnchanged": true
+  },
+  "environment": {
+    "node": "24.22.3",
+    "timingBrowser": "Chromium 140.0.7339.186 headless SwiftShader",
+    "correctnessBrowser": "Chromium 149",
+    "webkit": "26.5 build 2388 correctness only",
+    "viewport": {
+      "width": 1500,
+      "height": 980
+    },
+    "surface": {
+      "width": 1148,
+      "height": 914,
+      "dpr": 1
+    },
+    "physicalPresentationMeasured": false,
+    "cpuProfilerEnabled": false,
+    "hardwareGPU": false
+  },
+  "limits": [
+    "Recorded thread event duration is wall-time coverage, not CPU/GPU execution or proof of blocking.",
+    "Trace and ordinary captures have different delivered/coalesced inputs and reached poses; no speedup ratio or fixed-work comparison.",
+    "Host and page clocks are never subtracted. Receipt marks exclude pre-DOM delivery and physical presentation."
+  ],
+  "captures": [
+    {
+      "id": "continuous-ordinary-24",
+      "kind": "ordinary",
+      "artifacts": [
+        {
+          "path": "continuous-ordinary-24/workflow-continuous.json",
+          "bytes": 58725,
+          "sha256": "779be4732a5f7fd72fcda0f33c457f55ba04c80f7ffddfe9a322afb025abf7e7"
+        }
+      ],
+      "workload": {
+        "source": {
+          "head": "43af21321ac974eb88777a086fd87d173b7444cd",
+          "tree": "81d7d09ab578c6736f1fbaf803a8127ea227dee9",
+          "dirty": false
+        },
+        "count": 24,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "gestures": [
+          {
+            "round": 0,
+            "direction": "in",
+            "receivedEvents": 7,
+            "deltaSum": -160,
+            "engineExecutions": 6,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 10,
+              "bufferBytes": 46512,
+              "uniformUploads": 7,
+              "uniformBytes": 1280,
+              "drawcalls": 24,
+              "indices": 62688,
+              "arrayVertices": 24
+            },
+            "visibleBefore": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            }
+          },
+          {
+            "round": 0,
+            "direction": "out",
+            "receivedEvents": 8,
+            "deltaSum": 160,
+            "engineExecutions": 8,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 11,
+              "bufferBytes": 55488,
+              "uniformUploads": 8,
+              "uniformBytes": 1472,
+              "drawcalls": 28,
+              "indices": 75636,
+              "arrayVertices": 28
+            },
+            "visibleBefore": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            }
+          },
+          {
+            "round": 1,
+            "direction": "in",
+            "receivedEvents": 8,
+            "deltaSum": -160,
+            "engineExecutions": 6,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 9,
+              "bufferBytes": 46320,
+              "uniformUploads": 6,
+              "uniformBytes": 1088,
+              "drawcalls": 20,
+              "indices": 51642,
+              "arrayVertices": 20
+            },
+            "visibleBefore": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            }
+          },
+          {
+            "round": 1,
+            "direction": "out",
+            "receivedEvents": 8,
+            "deltaSum": 160,
+            "engineExecutions": 6,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 10,
+              "bufferBytes": 55296,
+              "uniformUploads": 7,
+              "uniformBytes": 1280,
+              "drawcalls": 24,
+              "indices": 66396,
+              "arrayVertices": 24
+            },
+            "visibleBefore": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "continuous-ordinary-2400",
+      "kind": "ordinary",
+      "artifacts": [
+        {
+          "path": "continuous-ordinary-2400/workflow-continuous.json",
+          "bytes": 148976,
+          "sha256": "94e464780a139e67006ff1f1185472c2e02435b7c7a4de58d960d396f6414d36"
+        }
+      ],
+      "workload": {
+        "source": {
+          "head": "43af21321ac974eb88777a086fd87d173b7444cd",
+          "tree": "81d7d09ab578c6736f1fbaf803a8127ea227dee9",
+          "dirty": false
+        },
+        "count": 2400,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "gestures": [
+          {
+            "round": 0,
+            "direction": "in",
+            "hostCommands": 40,
+            "receivedEvents": 22,
+            "coalescedCommands": 18,
+            "deltaSum": -800,
+            "hostDispatchedSpanMs": 623.527,
+            "hostAcknowledgementDurationMs": 1376.396,
+            "hostMaxLateDispatchMs": 0.731,
+            "deliveredDurationMs": 4352.9,
+            "receiptIntervalMs": {
+              "p50": 56.1,
+              "p95": 717.3,
+              "max": 765.2,
+              "total": 4352.9
+            },
+            "outsideEngineGapMs": {
+              "p50": 17,
+              "p95": 772.3,
+              "max": 772.3,
+              "total": 3731.4
+            },
+            "engineExecutions": 18,
+            "renderedFrames": 17,
+            "engineMs": {
+              "p50": 16.9,
+              "p95": 116.1,
+              "max": 116.1,
+              "total": 627.8
+            },
+            "renderedEngineMs": {
+              "p50": 21.2,
+              "p95": 116.1,
+              "max": 116.1,
+              "total": 626.7
+            },
+            "completedFrameIntervalMs": {
+              "p50": 70.6,
+              "p95": 785.5,
+              "max": 785.5,
+              "total": 4266.3
+            },
+            "inputPrefixCompletionMs": {
+              "p50": 48,
+              "p95": 735.9,
+              "max": 779.8,
+              "total": 2414.3
+            },
+            "lastInputToTargetFrameMs": 6.6,
+            "engineFramesOver16_7ms": 11,
+            "nativeTotals": {
+              "bufferCreates": 52,
+              "bufferDeletes": 106,
+              "bufferAllocations": 52,
+              "bufferUploads": 255,
+              "bufferBytes": 19747744,
+              "uniformUploads": 71,
+              "uniformBytes": 10176,
+              "drawcalls": 168,
+              "indices": 4648512,
+              "arrayVertices": 68
+            },
+            "visibleBefore": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 102,
+              "edges": 90,
+              "other": 0
+            },
+            "allocatedBufferBytesBefore": 3080668,
+            "allocatedBufferBytesAfter": 184916
+          },
+          {
+            "round": 0,
+            "direction": "out",
+            "hostCommands": 40,
+            "receivedEvents": 24,
+            "coalescedCommands": 16,
+            "deltaSum": 800,
+            "hostDispatchedSpanMs": 624.593,
+            "hostAcknowledgementDurationMs": 969.39,
+            "hostMaxLateDispatchMs": 5.133,
+            "deliveredDurationMs": 2302.6,
+            "receiptIntervalMs": {
+              "p50": 78.5,
+              "p95": 269.7,
+              "max": 293.6,
+              "total": 2302.6
+            },
+            "outsideEngineGapMs": {
+              "p50": 83.8,
+              "p95": 224.3,
+              "max": 241,
+              "total": 1679.4
+            },
+            "engineExecutions": 21,
+            "renderedFrames": 19,
+            "engineMs": {
+              "p50": 19.5,
+              "p95": 72.7,
+              "max": 81.6,
+              "total": 624.5
+            },
+            "renderedEngineMs": {
+              "p50": 24,
+              "p95": 81.6,
+              "max": 81.6,
+              "total": 623.3
+            },
+            "completedFrameIntervalMs": {
+              "p50": 109.7,
+              "p95": 252.9,
+              "max": 277.4,
+              "total": 2295.9
+            },
+            "inputPrefixCompletionMs": {
+              "p50": 23.1,
+              "p95": 85.3,
+              "max": 151.6,
+              "total": 941.4
+            },
+            "lastInputToTargetFrameMs": 13.7,
+            "engineFramesOver16_7ms": 12,
+            "nativeTotals": {
+              "bufferCreates": 98,
+              "bufferDeletes": 44,
+              "bufferAllocations": 98,
+              "bufferUploads": 365,
+              "bufferBytes": 25469992,
+              "uniformUploads": 98,
+              "uniformBytes": 13760,
+              "drawcalls": 199,
+              "indices": 5718876,
+              "arrayVertices": 76
+            },
+            "visibleBefore": {
+              "cards": 102,
+              "edges": 90,
+              "other": 0
+            },
+            "visibleAfter": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "allocatedBufferBytesBefore": 184916,
+            "allocatedBufferBytesAfter": 3362908
+          },
+          {
+            "round": 1,
+            "direction": "in",
+            "hostCommands": 40,
+            "receivedEvents": 21,
+            "coalescedCommands": 19,
+            "deltaSum": -800,
+            "hostDispatchedSpanMs": 624.253,
+            "hostAcknowledgementDurationMs": 3767.595,
+            "hostMaxLateDispatchMs": 3.284,
+            "deliveredDurationMs": 6550.8,
+            "receiptIntervalMs": {
+              "p50": 274.1,
+              "p95": 775.2,
+              "max": 791.1,
+              "total": 6550.8
+            },
+            "outsideEngineGapMs": {
+              "p50": 211.5,
+              "p95": 769.3,
+              "max": 769.3,
+              "total": 5411.4
+            },
+            "engineExecutions": 20,
+            "renderedFrames": 20,
+            "engineMs": {
+              "p50": 17.4,
+              "p95": 64.9,
+              "max": 77.7,
+              "total": 570.7
+            },
+            "renderedEngineMs": {
+              "p50": 17.4,
+              "p95": 64.9,
+              "max": 77.7,
+              "total": 570.7
+            },
+            "completedFrameIntervalMs": {
+              "p50": 276.4,
+              "p95": 783.7,
+              "max": 783.7,
+              "total": 5920.1
+            },
+            "inputPrefixCompletionMs": {
+              "p50": 18.9,
+              "p95": 78.5,
+              "max": 636.2,
+              "total": 1231.1
+            },
+            "lastInputToTargetFrameMs": 5.5,
+            "engineFramesOver16_7ms": 11,
+            "nativeTotals": {
+              "bufferCreates": 12,
+              "bufferDeletes": 66,
+              "bufferAllocations": 12,
+              "bufferUploads": 309,
+              "bufferBytes": 22897584,
+              "uniformUploads": 91,
+              "uniformBytes": 12928,
+              "drawcalls": 166,
+              "indices": 4594464,
+              "arrayVertices": 80
+            },
+            "visibleBefore": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 102,
+              "edges": 90,
+              "other": 0
+            },
+            "allocatedBufferBytesBefore": 3362908,
+            "allocatedBufferBytesAfter": 184916
+          },
+          {
+            "round": 1,
+            "direction": "out",
+            "hostCommands": 40,
+            "receivedEvents": 23,
+            "coalescedCommands": 17,
+            "deltaSum": 800,
+            "hostDispatchedSpanMs": 622.98,
+            "hostAcknowledgementDurationMs": 711.419,
+            "hostMaxLateDispatchMs": 6.685,
+            "deliveredDurationMs": 1487.3,
+            "receiptIntervalMs": {
+              "p50": 36.4,
+              "p95": 169.1,
+              "max": 175.9,
+              "total": 1487.3
+            },
+            "outsideEngineGapMs": {
+              "p50": 49.2,
+              "p95": 137,
+              "max": 137,
+              "total": 963.8
+            },
+            "engineExecutions": 18,
+            "renderedFrames": 17,
+            "engineMs": {
+              "p50": 17.8,
+              "p95": 71.3,
+              "max": 71.3,
+              "total": 529.6
+            },
+            "renderedEngineMs": {
+              "p50": 24.7,
+              "p95": 71.3,
+              "max": 71.3,
+              "total": 528.8
+            },
+            "completedFrameIntervalMs": {
+              "p50": 78,
+              "p95": 179.6,
+              "max": 179.6,
+              "total": 1488.2
+            },
+            "inputPrefixCompletionMs": {
+              "p50": 30.1,
+              "p95": 77.2,
+              "max": 109.3,
+              "total": 862.6
+            },
+            "lastInputToTargetFrameMs": 17.1,
+            "engineFramesOver16_7ms": 10,
+            "nativeTotals": {
+              "bufferCreates": 92,
+              "bufferDeletes": 38,
+              "bufferAllocations": 92,
+              "bufferUploads": 322,
+              "bufferBytes": 22365776,
+              "uniformUploads": 86,
+              "uniformBytes": 12096,
+              "drawcalls": 177,
+              "indices": 5098821,
+              "arrayVertices": 68
+            },
+            "visibleBefore": {
+              "cards": 102,
+              "edges": 90,
+              "other": 0
+            },
+            "visibleAfter": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "allocatedBufferBytesBefore": 184916,
+            "allocatedBufferBytesAfter": 3358300
+          }
+        ]
+      }
+    },
+    {
+      "id": "continuous-trace-24-2",
+      "kind": "trace",
+      "artifacts": [
+        {
+          "path": "continuous-trace-24-2/workflow-continuous.json",
+          "bytes": 63862,
+          "sha256": "a3538ba7db86faed5998f7321d0da9aad928b7f5678cdef9815c2d53e3fa5a46"
+        },
+        {
+          "path": "continuous-trace-24-2/workflow-continuous.raw.json",
+          "bytes": 6189202,
+          "sha256": "5ac3933c96d3fdf2658b5e07aba266256932d8cba5d7a4a344fd5fe6031d6e56"
+        },
+        {
+          "path": "continuous-trace-24-2/workflow-continuous.summary.json",
+          "bytes": 45211,
+          "sha256": "5e98c84e3d5a8359fae0f72899e0970704e39e93276f081a4b5a4c65ebb6c825"
+        },
+        {
+          "path": "continuous-trace-24-2/workflow-continuous.continuous-summary.json",
+          "bytes": 140139,
+          "sha256": "e909dd0272ffc3e5e23147718866c203c8ceefbae3b969907bd2403a7f8c0e51"
+        }
+      ],
+      "source": {
+        "head": "43af21321ac974eb88777a086fd87d173b7444cd",
+        "tree": "81d7d09ab578c6736f1fbaf803a8127ea227dee9",
+        "dirty": false
+      },
+      "clock": {
+        "offsetMs": 6588246.614,
+        "toleranceMs": 0.2,
+        "driftMs": 0.1,
+        "bracketWidthMs": 5.6,
+        "pid": 119,
+        "tid": 119
+      },
+      "marks": {
+        "total": 30,
+        "uniqueWheelDispatch": 30,
+        "unmatched": 0,
+        "ambiguous": 0,
+        "maxReceiptToMarkMs": 0.2
+      },
+      "workload": {
+        "source": {
+          "head": "43af21321ac974eb88777a086fd87d173b7444cd",
+          "tree": "81d7d09ab578c6736f1fbaf803a8127ea227dee9",
+          "dirty": false
+        },
+        "count": 24,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "gestures": [
+          {
+            "round": 0,
+            "direction": "in",
+            "receivedEvents": 7,
+            "deltaSum": -160,
+            "engineExecutions": 7,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 11,
+              "bufferBytes": 46704,
+              "uniformUploads": 8,
+              "uniformBytes": 1472,
+              "drawcalls": 28,
+              "indices": 75612,
+              "arrayVertices": 28
+            },
+            "visibleBefore": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            }
+          },
+          {
+            "round": 0,
+            "direction": "out",
+            "receivedEvents": 8,
+            "deltaSum": 160,
+            "engineExecutions": 8,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 11,
+              "bufferBytes": 55488,
+              "uniformUploads": 8,
+              "uniformBytes": 1472,
+              "drawcalls": 28,
+              "indices": 75612,
+              "arrayVertices": 28
+            },
+            "visibleBefore": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            }
+          },
+          {
+            "round": 1,
+            "direction": "in",
+            "receivedEvents": 7,
+            "deltaSum": -160,
+            "engineExecutions": 5,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 9,
+              "bufferBytes": 46320,
+              "uniformUploads": 6,
+              "uniformBytes": 1088,
+              "drawcalls": 20,
+              "indices": 53496,
+              "arrayVertices": 20
+            },
+            "visibleBefore": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            }
+          },
+          {
+            "round": 1,
+            "direction": "out",
+            "receivedEvents": 8,
+            "deltaSum": 160,
+            "engineExecutions": 8,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 11,
+              "bufferBytes": 55488,
+              "uniformUploads": 8,
+              "uniformBytes": 1472,
+              "drawcalls": 28,
+              "indices": 75612,
+              "arrayVertices": 28
+            },
+            "visibleBefore": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "continuous-trace-2400-1",
+      "kind": "trace",
+      "artifacts": [
+        {
+          "path": "continuous-trace-2400-1/workflow-continuous.json",
+          "bytes": 163106,
+          "sha256": "dffaec122697c32bb9aef0ef75be1daefa4acfd117d058a490812011516581d5"
+        },
+        {
+          "path": "continuous-trace-2400-1/workflow-continuous.raw.json",
+          "bytes": 19221907,
+          "sha256": "fcdd6178dadd78bb72ba92e7283ff65e15590bf0faa0f452526f44375fb330a9"
+        },
+        {
+          "path": "continuous-trace-2400-1/workflow-continuous.summary.json",
+          "bytes": 132845,
+          "sha256": "735dce30b069eddfb0af73fe0a86866de35070d8715364daddb30c74745fa6f1"
+        },
+        {
+          "path": "continuous-trace-2400-1/workflow-continuous.continuous-summary.json",
+          "bytes": 202933,
+          "sha256": "47fc47293a236345e39ab1713993d0ff5492b8bfd7e059e6865850baeeb3f45f"
+        }
+      ],
+      "source": {
+        "head": "43af21321ac974eb88777a086fd87d173b7444cd",
+        "tree": "81d7d09ab578c6736f1fbaf803a8127ea227dee9",
+        "dirty": false
+      },
+      "clock": {
+        "offsetMs": 6669191.409,
+        "toleranceMs": 0.2,
+        "driftMs": 0.015,
+        "bracketWidthMs": 2.6,
+        "pid": 118,
+        "tid": 118
+      },
+      "marks": {
+        "total": 91,
+        "uniqueWheelDispatch": 91,
+        "unmatched": 0,
+        "ambiguous": 0,
+        "maxReceiptToMarkMs": 0.5
+      },
+      "workload": {
+        "mode": "continuous-input-timeline",
+        "source": {
+          "head": "43af21321ac974eb88777a086fd87d173b7444cd",
+          "tree": "81d7d09ab578c6736f1fbaf803a8127ea227dee9",
+          "dirty": false
+        },
+        "count": 2400,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "gestures": [
+          {
+            "round": 0,
+            "direction": "in",
+            "hostCommands": 40,
+            "receivedEvents": 22,
+            "coalescedCommands": 18,
+            "deltaSum": -800,
+            "hostDispatchedSpanMs": 623.111,
+            "hostAcknowledgementDurationMs": 2084.53,
+            "hostMaxLateDispatchMs": 4.065,
+            "deliveredDurationMs": 5656.9,
+            "receiptIntervalMs": {
+              "p50": 103.7,
+              "p95": 833,
+              "max": 1197.5,
+              "total": 5656.9
+            },
+            "outsideEngineGapMs": {
+              "p50": 53.8,
+              "p95": 1173.8,
+              "max": 1173.8,
+              "total": 5003.1
+            },
+            "engineExecutions": 20,
+            "renderedFrames": 19,
+            "engineMs": {
+              "p50": 17.4,
+              "p95": 102.9,
+              "max": 153.5,
+              "total": 659.5
+            },
+            "renderedEngineMs": {
+              "p50": 20.3,
+              "p95": 153.5,
+              "max": 153.5,
+              "total": 658.2
+            },
+            "completedFrameIntervalMs": {
+              "p50": 98.2,
+              "p95": 1182.6,
+              "max": 1182.6,
+              "total": 5559.7
+            },
+            "inputPrefixCompletionMs": {
+              "p50": 25.9,
+              "p95": 204.1,
+              "max": 629.6,
+              "total": 1683.8
+            },
+            "lastInputToTargetFrameMs": 6.1,
+            "engineFramesOver16_7ms": 11,
+            "nativeTotals": {
+              "bufferCreates": 58,
+              "bufferDeletes": 112,
+              "bufferAllocations": 58,
+              "bufferUploads": 260,
+              "bufferBytes": 20393504,
+              "uniformUploads": 73,
+              "uniformBytes": 10560,
+              "drawcalls": 172,
+              "indices": 4779744,
+              "arrayVertices": 76
+            },
+            "visibleBefore": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 102,
+              "edges": 90,
+              "other": 0
+            },
+            "allocatedBufferBytesBefore": 3080668,
+            "allocatedBufferBytesAfter": 184916
+          },
+          {
+            "round": 0,
+            "direction": "out",
+            "hostCommands": 40,
+            "receivedEvents": 24,
+            "coalescedCommands": 16,
+            "deltaSum": 800,
+            "hostDispatchedSpanMs": 623.941,
+            "hostAcknowledgementDurationMs": 732.715,
+            "hostMaxLateDispatchMs": 1.713,
+            "deliveredDurationMs": 1681.9,
+            "receiptIntervalMs": {
+              "p50": 55.8,
+              "p95": 226.6,
+              "max": 290.5,
+              "total": 1681.9
+            },
+            "outsideEngineGapMs": {
+              "p50": 44.7,
+              "p95": 240.9,
+              "max": 240.9,
+              "total": 1207.7
+            },
+            "engineExecutions": 20,
+            "renderedFrames": 19,
+            "engineMs": {
+              "p50": 15.1,
+              "p95": 52.1,
+              "max": 74,
+              "total": 484.9
+            },
+            "renderedEngineMs": {
+              "p50": 17.8,
+              "p95": 74,
+              "max": 74,
+              "total": 484.2
+            },
+            "completedFrameIntervalMs": {
+              "p50": 80.9,
+              "p95": 314.9,
+              "max": 314.9,
+              "total": 1687.8
+            },
+            "inputPrefixCompletionMs": {
+              "p50": 24.6,
+              "p95": 117.4,
+              "max": 144.3,
+              "total": 903.4
+            },
+            "lastInputToTargetFrameMs": 11,
+            "engineFramesOver16_7ms": 10,
+            "nativeTotals": {
+              "bufferCreates": 96,
+              "bufferDeletes": 42,
+              "bufferAllocations": 96,
+              "bufferUploads": 335,
+              "bufferBytes": 21892448,
+              "uniformUploads": 88,
+              "uniformBytes": 12480,
+              "drawcalls": 185,
+              "indices": 5028177,
+              "arrayVertices": 76
+            },
+            "visibleBefore": {
+              "cards": 102,
+              "edges": 90,
+              "other": 0
+            },
+            "visibleAfter": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "allocatedBufferBytesBefore": 184916,
+            "allocatedBufferBytesAfter": 3335260
+          },
+          {
+            "round": 1,
+            "direction": "in",
+            "hostCommands": 40,
+            "receivedEvents": 21,
+            "coalescedCommands": 19,
+            "deltaSum": -800,
+            "hostDispatchedSpanMs": 625.524,
+            "hostAcknowledgementDurationMs": 3337.413,
+            "hostMaxLateDispatchMs": 1.606,
+            "deliveredDurationMs": 6701.3,
+            "receiptIntervalMs": {
+              "p50": 189.2,
+              "p95": 902.4,
+              "max": 1237.7,
+              "total": 6701.3
+            },
+            "outsideEngineGapMs": {
+              "p50": 185.5,
+              "p95": 1179.2,
+              "max": 1179.2,
+              "total": 6157.7
+            },
+            "engineExecutions": 19,
+            "renderedFrames": 19,
+            "engineMs": {
+              "p50": 17.2,
+              "p95": 62.8,
+              "max": 62.8,
+              "total": 489.5
+            },
+            "renderedEngineMs": {
+              "p50": 17.2,
+              "p95": 62.8,
+              "max": 62.8,
+              "total": 489.5
+            },
+            "completedFrameIntervalMs": {
+              "p50": 190.6,
+              "p95": 1226.7,
+              "max": 1226.7,
+              "total": 6584.4
+            },
+            "inputPrefixCompletionMs": {
+              "p50": 21.3,
+              "p95": 122.7,
+              "max": 788.5,
+              "total": 1427.9
+            },
+            "lastInputToTargetFrameMs": 5.8,
+            "engineFramesOver16_7ms": 10,
+            "nativeTotals": {
+              "bufferCreates": 20,
+              "bufferDeletes": 74,
+              "bufferAllocations": 20,
+              "bufferUploads": 276,
+              "bufferBytes": 20132432,
+              "uniformUploads": 82,
+              "uniformBytes": 11712,
+              "drawcalls": 149,
+              "indices": 4039764,
+              "arrayVertices": 76
+            },
+            "visibleBefore": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 102,
+              "edges": 90,
+              "other": 0
+            },
+            "allocatedBufferBytesBefore": 3335260,
+            "allocatedBufferBytesAfter": 184916
+          },
+          {
+            "round": 1,
+            "direction": "out",
+            "hostCommands": 40,
+            "receivedEvents": 24,
+            "coalescedCommands": 16,
+            "deltaSum": 800,
+            "hostDispatchedSpanMs": 623.849,
+            "hostAcknowledgementDurationMs": 756.491,
+            "hostMaxLateDispatchMs": 4.375,
+            "deliveredDurationMs": 1739.2,
+            "receiptIntervalMs": {
+              "p50": 41,
+              "p95": 255.8,
+              "max": 255.9,
+              "total": 1739.2
+            },
+            "outsideEngineGapMs": {
+              "p50": 42.9,
+              "p95": 209.6,
+              "max": 209.6,
+              "total": 1268.8
+            },
+            "engineExecutions": 20,
+            "renderedFrames": 18,
+            "engineMs": {
+              "p50": 13.2,
+              "p95": 59.8,
+              "max": 79.3,
+              "total": 490.9
+            },
+            "renderedEngineMs": {
+              "p50": 13.8,
+              "p95": 79.3,
+              "max": 79.3,
+              "total": 489.8
+            },
+            "completedFrameIntervalMs": {
+              "p50": 77,
+              "p95": 266.5,
+              "max": 266.5,
+              "total": 1755.4
+            },
+            "inputPrefixCompletionMs": {
+              "p50": 35.4,
+              "p95": 93.2,
+              "max": 113.3,
+              "total": 1015.4
+            },
+            "lastInputToTargetFrameMs": 20.7,
+            "engineFramesOver16_7ms": 9,
+            "nativeTotals": {
+              "bufferCreates": 90,
+              "bufferDeletes": 36,
+              "bufferAllocations": 90,
+              "bufferUploads": 326,
+              "bufferBytes": 21134312,
+              "uniformUploads": 85,
+              "uniformBytes": 12032,
+              "drawcalls": 179,
+              "indices": 4875630,
+              "arrayVertices": 72
+            },
+            "visibleBefore": {
+              "cards": 102,
+              "edges": 90,
+              "other": 0
+            },
+            "visibleAfter": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "allocatedBufferBytesBefore": 184916,
+            "allocatedBufferBytesAfter": 3349084
+          }
+        ]
+      },
+      "parts": [
+        {
+          "gesture": "0/in",
+          "kind": "engine",
+          "windows": 20,
+          "elapsedMs": 659.5,
+          "mainTaskCoveredMs": 659.5,
+          "outsideMainTasksMs": 0,
+          "mainGCLabelUnionMs": 28.363,
+          "byThread": [
+            {
+              "pid": 74,
+              "tid": 74,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 298.332,
+              "eventCount": 696,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  298.332
+                ],
+                [
+                  "Scheduler::RunTask",
+                  297.582
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  291.967
+                ],
+                [
+                  "GLContextEGL::MakeCurrent",
+                  210.782
+                ],
+                [
+                  "CommandBuffer::Flush",
+                  82.301
+                ],
+                [
+                  "CommandBufferStub::OnAsyncFlush",
+                  82.245
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "gesture": "0/in",
+          "kind": "gap",
+          "windows": 20,
+          "elapsedMs": 5003.5,
+          "mainTaskCoveredMs": 70.337,
+          "outsideMainTasksMs": 4933.163,
+          "mainGCLabelUnionMs": 0,
+          "byThread": [
+            {
+              "pid": 74,
+              "tid": 74,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 4983.156,
+              "eventCount": 1086,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  4983.156
+                ],
+                [
+                  "Scheduler::RunTask",
+                  4981.65
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  3653.616
+                ],
+                [
+                  "GLContextEGL::MakeCurrent",
+                  2375.027
+                ],
+                [
+                  "SkiaOutputSurfaceImplOnGpu::FinishPaintCurrentFrame",
+                  1315.814
+                ],
+                [
+                  "CommandBuffer::Flush",
+                  1277.532
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "gesture": "0/out",
+          "kind": "engine",
+          "windows": 20,
+          "elapsedMs": 484.9,
+          "mainTaskCoveredMs": 484.9,
+          "outsideMainTasksMs": 0,
+          "mainGCLabelUnionMs": 3.296,
+          "byThread": [
+            {
+              "pid": 74,
+              "tid": 74,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 476.173,
+              "eventCount": 532,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  476.173
+                ],
+                [
+                  "Scheduler::RunTask",
+                  475.973
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  290.444
+                ],
+                [
+                  "GLContextEGL::MakeCurrent",
+                  248.454
+                ],
+                [
+                  "CommandBuffer::Flush",
+                  133.357
+                ],
+                [
+                  "CommandBufferStub::OnAsyncFlush",
+                  133.216
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "gesture": "0/out",
+          "kind": "gap",
+          "windows": 20,
+          "elapsedMs": 1208,
+          "mainTaskCoveredMs": 90.695,
+          "outsideMainTasksMs": 1117.305,
+          "mainGCLabelUnionMs": 35.045,
+          "byThread": [
+            {
+              "pid": 74,
+              "tid": 74,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 1193.622,
+              "eventCount": 1048,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  1193.622
+                ],
+                [
+                  "Scheduler::RunTask",
+                  1192.792
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  505.788
+                ],
+                [
+                  "GLContextEGL::MakeCurrent",
+                  396.778
+                ],
+                [
+                  "SkiaOutputSurfaceImplOnGpu::FinishPaintCurrentFrame",
+                  368.187
+                ],
+                [
+                  "CommandBuffer::Flush",
+                  258.568
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "gesture": "1/in",
+          "kind": "engine",
+          "windows": 19,
+          "elapsedMs": 489.5,
+          "mainTaskCoveredMs": 489.5,
+          "outsideMainTasksMs": 0,
+          "mainGCLabelUnionMs": 9.998,
+          "byThread": [
+            {
+              "pid": 74,
+              "tid": 74,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 417.753,
+              "eventCount": 593,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  417.753
+                ],
+                [
+                  "Scheduler::RunTask",
+                  417.522
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  322.15
+                ],
+                [
+                  "GLContextEGL::MakeCurrent",
+                  224.192
+                ],
+                [
+                  "CommandBuffer::Flush",
+                  100.047
+                ],
+                [
+                  "CommandBufferStub::OnAsyncFlush",
+                  100.006
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "gesture": "1/in",
+          "kind": "gap",
+          "windows": 19,
+          "elapsedMs": 6217.6,
+          "mainTaskCoveredMs": 58.31,
+          "outsideMainTasksMs": 6159.29,
+          "mainGCLabelUnionMs": 1.538,
+          "byThread": [
+            {
+              "pid": 74,
+              "tid": 74,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 6215.397,
+              "eventCount": 1157,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  6215.397
+                ],
+                [
+                  "Scheduler::RunTask",
+                  6213.678
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  2928.606
+                ],
+                [
+                  "SkiaOutputSurfaceImplOnGpu::FinishPaintCurrentFrame",
+                  2910.024
+                ],
+                [
+                  "GLContextEGL::MakeCurrent",
+                  1742.16
+                ],
+                [
+                  "CommandBuffer::Flush",
+                  1535.704
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "gesture": "1/out",
+          "kind": "engine",
+          "windows": 20,
+          "elapsedMs": 490.9,
+          "mainTaskCoveredMs": 490.9,
+          "outsideMainTasksMs": 0,
+          "mainGCLabelUnionMs": 5.22,
+          "byThread": [
+            {
+              "pid": 74,
+              "tid": 74,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 486.434,
+              "eventCount": 488,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  486.434
+                ],
+                [
+                  "Scheduler::RunTask",
+                  486.277
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  372.932
+                ],
+                [
+                  "CommandBuffer::Flush",
+                  285.513
+                ],
+                [
+                  "CommandBufferStub::OnAsyncFlush",
+                  285.384
+                ],
+                [
+                  "CommandBufferService:PutChanged",
+                  285.277
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "gesture": "1/out",
+          "kind": "gap",
+          "windows": 20,
+          "elapsedMs": 1269,
+          "mainTaskCoveredMs": 54.545,
+          "outsideMainTasksMs": 1214.455,
+          "mainGCLabelUnionMs": 0,
+          "byThread": [
+            {
+              "pid": 74,
+              "tid": 74,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 1267.349,
+              "eventCount": 1013,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  1267.349
+                ],
+                [
+                  "Scheduler::RunTask",
+                  1266.788
+                ],
+                [
+                  "SkiaOutputSurfaceImplOnGpu::FinishPaintCurrentFrame",
+                  532.459
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  520.315
+                ],
+                [
+                  "GLContextEGL::MakeCurrent",
+                  365.69
+                ],
+                [
+                  "CommandBuffer::Flush",
+                  330.291
+                ]
+              ]
+            }
+          ]
+        }
+      ],
+      "longestGaps": [
+        {
+          "id": "1/in/gap/1",
+          "elapsedMs": 1179.2,
+          "taskCoveredMs": 7.885,
+          "gcCoveredMs": 0,
+          "traceInclusiveTop": [
+            [
+              "ThreadControllerImpl::RunTask",
+              7.885
+            ],
+            [
+              "ProxyMain::BeginMainFrame",
+              7.068
+            ],
+            [
+              "v8.callFunction",
+              4.587
+            ]
+          ]
+        },
+        {
+          "id": "0/in/gap/14",
+          "elapsedMs": 1173.8,
+          "taskCoveredMs": 5.259,
+          "gcCoveredMs": 0,
+          "traceInclusiveTop": [
+            [
+              "ThreadControllerImpl::RunTask",
+              5.259
+            ],
+            [
+              "ProxyMain::BeginMainFrame",
+              4.239
+            ],
+            [
+              "v8.callFunction",
+              1.912
+            ]
+          ]
+        },
+        {
+          "id": "1/in/gap/13",
+          "elapsedMs": 891.6,
+          "taskCoveredMs": 3.673,
+          "gcCoveredMs": 0,
+          "traceInclusiveTop": [
+            [
+              "ThreadControllerImpl::RunTask",
+              3.673
+            ],
+            [
+              "ProxyMain::BeginMainFrame",
+              3.024
+            ],
+            [
+              "v8.callFunction",
+              1.477
+            ]
+          ]
+        },
+        {
+          "id": "0/in/gap/16",
+          "elapsedMs": 810.9,
+          "taskCoveredMs": 3.815,
+          "gcCoveredMs": 0,
+          "traceInclusiveTop": [
+            [
+              "ThreadControllerImpl::RunTask",
+              3.815
+            ],
+            [
+              "ProxyMain::BeginMainFrame",
+              3.106
+            ],
+            [
+              "v8.callFunction",
+              1.971
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "continuous-trace-2400-2",
+      "kind": "trace",
+      "artifacts": [
+        {
+          "path": "continuous-trace-2400-2/workflow-continuous.json",
+          "bytes": 161854,
+          "sha256": "8b61ecfd9d5589a5585f924ea4b8f4b0afbf7a92333f5c58e4d50f2d6a55e240"
+        },
+        {
+          "path": "continuous-trace-2400-2/workflow-continuous.raw.json",
+          "bytes": 19395696,
+          "sha256": "57733ed324959b7b8086c2549eb437f538ec10cef6a99219a3c95af5cda4139a"
+        },
+        {
+          "path": "continuous-trace-2400-2/workflow-continuous.summary.json",
+          "bytes": 131459,
+          "sha256": "c60ebceff572564e177bb51d29c91a169ed79e211bd052ca95e570afeb456fd5"
+        },
+        {
+          "path": "continuous-trace-2400-2/workflow-continuous.continuous-summary.json",
+          "bytes": 212353,
+          "sha256": "19bc279384e69d303c84412a9e58192017ab31a216398e0ac4b1253b955c03dd"
+        }
+      ],
+      "source": {
+        "head": "43af21321ac974eb88777a086fd87d173b7444cd",
+        "tree": "81d7d09ab578c6736f1fbaf803a8127ea227dee9",
+        "dirty": false
+      },
+      "clock": {
+        "offsetMs": 6718912.665,
+        "toleranceMs": 0.2,
+        "driftMs": 0.063,
+        "bracketWidthMs": 2.7,
+        "pid": 119,
+        "tid": 119
+      },
+      "marks": {
+        "total": 90,
+        "uniqueWheelDispatch": 90,
+        "unmatched": 0,
+        "ambiguous": 0,
+        "maxReceiptToMarkMs": 0.3
+      },
+      "workload": {
+        "mode": "continuous-input-timeline",
+        "source": {
+          "head": "43af21321ac974eb88777a086fd87d173b7444cd",
+          "tree": "81d7d09ab578c6736f1fbaf803a8127ea227dee9",
+          "dirty": false
+        },
+        "count": 2400,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "gestures": [
+          {
+            "round": 0,
+            "direction": "in",
+            "hostCommands": 40,
+            "receivedEvents": 23,
+            "coalescedCommands": 17,
+            "deltaSum": -800,
+            "hostDispatchedSpanMs": 624.275,
+            "hostAcknowledgementDurationMs": 1387.592,
+            "hostMaxLateDispatchMs": 3.35,
+            "deliveredDurationMs": 5111.5,
+            "receiptIntervalMs": {
+              "p50": 80.2,
+              "p95": 685.7,
+              "max": 868.4,
+              "total": 5111.5
+            },
+            "outsideEngineGapMs": {
+              "p50": 39.8,
+              "p95": 668.9,
+              "max": 851.5,
+              "total": 4447.6
+            },
+            "engineExecutions": 21,
+            "renderedFrames": 20,
+            "engineMs": {
+              "p50": 21.2,
+              "p95": 80,
+              "max": 115.7,
+              "total": 676.1
+            },
+            "renderedEngineMs": {
+              "p50": 21.2,
+              "p95": 80,
+              "max": 115.7,
+              "total": 675.1
+            },
+            "completedFrameIntervalMs": {
+              "p50": 117.6,
+              "p95": 684.5,
+              "max": 860.5,
+              "total": 5043.7
+            },
+            "inputPrefixCompletionMs": {
+              "p50": 27.1,
+              "p95": 116.5,
+              "max": 122.8,
+              "total": 971.1
+            },
+            "lastInputToTargetFrameMs": 12.7,
+            "engineFramesOver16_7ms": 11,
+            "nativeTotals": {
+              "bufferCreates": 60,
+              "bufferDeletes": 114,
+              "bufferAllocations": 60,
+              "bufferUploads": 293,
+              "bufferBytes": 23233520,
+              "uniformUploads": 82,
+              "uniformBytes": 11776,
+              "drawcalls": 189,
+              "indices": 5348526,
+              "arrayVertices": 80
+            },
+            "visibleBefore": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 102,
+              "edges": 90,
+              "other": 0
+            },
+            "allocatedBufferBytesBefore": 3080668,
+            "allocatedBufferBytesAfter": 184916
+          },
+          {
+            "round": 0,
+            "direction": "out",
+            "hostCommands": 40,
+            "receivedEvents": 23,
+            "coalescedCommands": 17,
+            "deltaSum": 800,
+            "hostDispatchedSpanMs": 627.249,
+            "hostAcknowledgementDurationMs": 747.607,
+            "hostMaxLateDispatchMs": 3.262,
+            "deliveredDurationMs": 1313.3,
+            "receiptIntervalMs": {
+              "p50": 40.4,
+              "p95": 141.1,
+              "max": 154.2,
+              "total": 1313.3
+            },
+            "outsideEngineGapMs": {
+              "p50": 32.2,
+              "p95": 125.4,
+              "max": 125.4,
+              "total": 789.1
+            },
+            "engineExecutions": 19,
+            "renderedFrames": 17,
+            "engineMs": {
+              "p50": 17.4,
+              "p95": 66.7,
+              "max": 66.7,
+              "total": 541.3
+            },
+            "renderedEngineMs": {
+              "p50": 21.1,
+              "p95": 66.7,
+              "max": 66.7,
+              "total": 534
+            },
+            "completedFrameIntervalMs": {
+              "p50": 65.2,
+              "p95": 142.8,
+              "max": 142.8,
+              "total": 1317.1
+            },
+            "inputPrefixCompletionMs": {
+              "p50": 47.5,
+              "p95": 67.6,
+              "max": 81.4,
+              "total": 887.7
+            },
+            "lastInputToTargetFrameMs": 18.1,
+            "engineFramesOver16_7ms": 11,
+            "nativeTotals": {
+              "bufferCreates": 91,
+              "bufferDeletes": 37,
+              "bufferAllocations": 91,
+              "bufferUploads": 323,
+              "bufferBytes": 22211016,
+              "uniformUploads": 85,
+              "uniformBytes": 11968,
+              "drawcalls": 179,
+              "indices": 5070450,
+              "arrayVertices": 68
+            },
+            "visibleBefore": {
+              "cards": 102,
+              "edges": 90,
+              "other": 0
+            },
+            "visibleAfter": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "allocatedBufferBytesBefore": 184916,
+            "allocatedBufferBytesAfter": 3360604
+          },
+          {
+            "round": 1,
+            "direction": "in",
+            "hostCommands": 40,
+            "receivedEvents": 21,
+            "coalescedCommands": 19,
+            "deltaSum": -800,
+            "hostDispatchedSpanMs": 623.115,
+            "hostAcknowledgementDurationMs": 4199.711,
+            "hostMaxLateDispatchMs": 9.172,
+            "deliveredDurationMs": 6804.4,
+            "receiptIntervalMs": {
+              "p50": 237.8,
+              "p95": 741.8,
+              "max": 784,
+              "total": 6804.4
+            },
+            "outsideEngineGapMs": {
+              "p50": 231.3,
+              "p95": 722.8,
+              "max": 722.8,
+              "total": 5427.5
+            },
+            "engineExecutions": 20,
+            "renderedFrames": 20,
+            "engineMs": {
+              "p50": 23.2,
+              "p95": 65.3,
+              "max": 72.6,
+              "total": 603.7
+            },
+            "renderedEngineMs": {
+              "p50": 23.2,
+              "p95": 65.3,
+              "max": 72.6,
+              "total": 603.7
+            },
+            "completedFrameIntervalMs": {
+              "p50": 243.3,
+              "p95": 750.5,
+              "max": 750.5,
+              "total": 5984.2
+            },
+            "inputPrefixCompletionMs": {
+              "p50": 29.1,
+              "p95": 74.7,
+              "max": 832.8,
+              "total": 1466.2
+            },
+            "lastInputToTargetFrameMs": 12.6,
+            "engineFramesOver16_7ms": 13,
+            "nativeTotals": {
+              "bufferCreates": 14,
+              "bufferDeletes": 68,
+              "bufferAllocations": 14,
+              "bufferUploads": 309,
+              "bufferBytes": 22897584,
+              "uniformUploads": 91,
+              "uniformBytes": 12928,
+              "drawcalls": 166,
+              "indices": 4594464,
+              "arrayVertices": 80
+            },
+            "visibleBefore": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 102,
+              "edges": 90,
+              "other": 0
+            },
+            "allocatedBufferBytesBefore": 3360604,
+            "allocatedBufferBytesAfter": 184916
+          },
+          {
+            "round": 1,
+            "direction": "out",
+            "hostCommands": 40,
+            "receivedEvents": 23,
+            "coalescedCommands": 17,
+            "deltaSum": 800,
+            "hostDispatchedSpanMs": 623.136,
+            "hostAcknowledgementDurationMs": 891.529,
+            "hostMaxLateDispatchMs": 2.913,
+            "deliveredDurationMs": 1411.9,
+            "receiptIntervalMs": {
+              "p50": 50.2,
+              "p95": 160.5,
+              "max": 183.1,
+              "total": 1411.9
+            },
+            "outsideEngineGapMs": {
+              "p50": 35.2,
+              "p95": 167.8,
+              "max": 167.8,
+              "total": 839.7
+            },
+            "engineExecutions": 18,
+            "renderedFrames": 17,
+            "engineMs": {
+              "p50": 28.3,
+              "p95": 83.7,
+              "max": 83.7,
+              "total": 570.2
+            },
+            "renderedEngineMs": {
+              "p50": 31.7,
+              "p95": 83.7,
+              "max": 83.7,
+              "total": 569.2
+            },
+            "completedFrameIntervalMs": {
+              "p50": 85.5,
+              "p95": 196.1,
+              "max": 196.1,
+              "total": 1404.8
+            },
+            "inputPrefixCompletionMs": {
+              "p50": 32.7,
+              "p95": 106.2,
+              "max": 120.7,
+              "total": 937.9
+            },
+            "lastInputToTargetFrameMs": 10.9,
+            "engineFramesOver16_7ms": 11,
+            "nativeTotals": {
+              "bufferCreates": 99,
+              "bufferDeletes": 45,
+              "bufferAllocations": 99,
+              "bufferUploads": 345,
+              "bufferBytes": 23695000,
+              "uniformUploads": 91,
+              "uniformBytes": 12736,
+              "drawcalls": 188,
+              "indices": 5362014,
+              "arrayVertices": 68
+            },
+            "visibleBefore": {
+              "cards": 102,
+              "edges": 90,
+              "other": 0
+            },
+            "visibleAfter": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "allocatedBufferBytesBefore": 184916,
+            "allocatedBufferBytesAfter": 3350236
+          }
+        ]
+      },
+      "parts": [
+        {
+          "gesture": "0/in",
+          "kind": "engine",
+          "windows": 21,
+          "elapsedMs": 676.1,
+          "mainTaskCoveredMs": 676.1,
+          "outsideMainTasksMs": 0,
+          "mainGCLabelUnionMs": 24.11,
+          "byThread": [
+            {
+              "pid": 73,
+              "tid": 73,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 323.861,
+              "eventCount": 886,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  323.861
+                ],
+                [
+                  "Scheduler::RunTask",
+                  323.075
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  177.952
+                ],
+                [
+                  "GLContextEGL::MakeCurrent",
+                  140.833
+                ],
+                [
+                  "CommandBuffer::Flush",
+                  96.6
+                ],
+                [
+                  "CommandBufferStub::OnAsyncFlush",
+                  96.505
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "gesture": "0/in",
+          "kind": "gap",
+          "windows": 21,
+          "elapsedMs": 4448.1,
+          "mainTaskCoveredMs": 85.436,
+          "outsideMainTasksMs": 4362.664,
+          "mainGCLabelUnionMs": 10.868,
+          "byThread": [
+            {
+              "pid": 73,
+              "tid": 73,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 4429.226,
+              "eventCount": 939,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  4429.226
+                ],
+                [
+                  "Scheduler::RunTask",
+                  4427.698
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  2663.266
+                ],
+                [
+                  "GLContextEGL::MakeCurrent",
+                  2469.166
+                ],
+                [
+                  "CommandBuffer::Flush",
+                  1075.175
+                ],
+                [
+                  "CommandBufferStub::OnAsyncFlush",
+                  1075.092
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "gesture": "0/out",
+          "kind": "engine",
+          "windows": 19,
+          "elapsedMs": 541.3,
+          "mainTaskCoveredMs": 541.3,
+          "outsideMainTasksMs": 0,
+          "mainGCLabelUnionMs": 2.534,
+          "byThread": [
+            {
+              "pid": 73,
+              "tid": 73,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 527.605,
+              "eventCount": 573,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  527.605
+                ],
+                [
+                  "Scheduler::RunTask",
+                  527.319
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  350.776
+                ],
+                [
+                  "GLContextEGL::MakeCurrent",
+                  324.912
+                ],
+                [
+                  "CommandBuffer::Flush",
+                  113.784
+                ],
+                [
+                  "CommandBufferStub::OnAsyncFlush",
+                  113.68
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "gesture": "0/out",
+          "kind": "gap",
+          "windows": 19,
+          "elapsedMs": 790.1,
+          "mainTaskCoveredMs": 57.511,
+          "outsideMainTasksMs": 732.589,
+          "mainGCLabelUnionMs": 4.145,
+          "byThread": [
+            {
+              "pid": 73,
+              "tid": 73,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 783.324,
+              "eventCount": 826,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  783.324
+                ],
+                [
+                  "Scheduler::RunTask",
+                  782.591
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  316.299
+                ],
+                [
+                  "GLContextEGL::MakeCurrent",
+                  246.563
+                ],
+                [
+                  "SkiaOutputSurfaceImplOnGpu::FinishPaintCurrentFrame",
+                  223.672
+                ],
+                [
+                  "SkiaOutputSurfaceImplOnGpu::FinishPaintRenderPass",
+                  156.721
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "gesture": "1/in",
+          "kind": "engine",
+          "windows": 20,
+          "elapsedMs": 603.7,
+          "mainTaskCoveredMs": 603.7,
+          "outsideMainTasksMs": 0,
+          "mainGCLabelUnionMs": 1.066,
+          "byThread": [
+            {
+              "pid": 73,
+              "tid": 73,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 575.876,
+              "eventCount": 756,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  575.876
+                ],
+                [
+                  "Scheduler::RunTask",
+                  575.459
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  462.992
+                ],
+                [
+                  "CommandBuffer::Flush",
+                  257.527
+                ],
+                [
+                  "CommandBufferStub::OnAsyncFlush",
+                  257.437
+                ],
+                [
+                  "CommandBufferService:PutChanged",
+                  257.137
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "gesture": "1/in",
+          "kind": "gap",
+          "windows": 20,
+          "elapsedMs": 6213.3,
+          "mainTaskCoveredMs": 89.857,
+          "outsideMainTasksMs": 6123.443,
+          "mainGCLabelUnionMs": 2.15,
+          "byThread": [
+            {
+              "pid": 73,
+              "tid": 73,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 6207.469,
+              "eventCount": 1206,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  6207.469
+                ],
+                [
+                  "Scheduler::RunTask",
+                  6206.557
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  3041.835
+                ],
+                [
+                  "CommandBuffer::Flush",
+                  2318.622
+                ],
+                [
+                  "CommandBufferStub::OnAsyncFlush",
+                  2318.521
+                ],
+                [
+                  "CommandBufferService:PutChanged",
+                  2318.13
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "gesture": "1/out",
+          "kind": "engine",
+          "windows": 18,
+          "elapsedMs": 570.2,
+          "mainTaskCoveredMs": 570.2,
+          "outsideMainTasksMs": 0,
+          "mainGCLabelUnionMs": 3.238,
+          "byThread": [
+            {
+              "pid": 73,
+              "tid": 73,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 532.908,
+              "eventCount": 468,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  532.908
+                ],
+                [
+                  "Scheduler::RunTask",
+                  532.596
+                ],
+                [
+                  "GLContextEGL::MakeCurrent",
+                  330.193
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  258.08
+                ],
+                [
+                  "CommandBuffer::Flush",
+                  97.392
+                ],
+                [
+                  "CommandBufferStub::OnAsyncFlush",
+                  97.36
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "gesture": "1/out",
+          "kind": "gap",
+          "windows": 18,
+          "elapsedMs": 852.6,
+          "mainTaskCoveredMs": 160.972,
+          "outsideMainTasksMs": 691.628,
+          "mainGCLabelUnionMs": 90.529,
+          "byThread": [
+            {
+              "pid": 73,
+              "tid": 73,
+              "process": "GPU Process",
+              "thread": "CrGpuMain",
+              "recordedEventUnionMs": 830.349,
+              "eventCount": 946,
+              "inclusiveTop": [
+                [
+                  "ThreadControllerImpl::RunTask",
+                  830.349
+                ],
+                [
+                  "Scheduler::RunTask",
+                  829.671
+                ],
+                [
+                  "GLContextEGL::MakeCurrent",
+                  434.182
+                ],
+                [
+                  "GpuChannel::ExecuteDeferredRequest",
+                  358.912
+                ],
+                [
+                  "SkiaOutputSurfaceImplOnGpu::FinishPaintCurrentFrame",
+                  229.731
+                ],
+                [
+                  "SkiaOutputSurfaceImplOnGpu::FinishPaintRenderPass",
+                  105.285
+                ]
+              ]
+            }
+          ]
+        }
+      ],
+      "longestGaps": [
+        {
+          "id": "0/in/gap/15",
+          "elapsedMs": 851.5,
+          "taskCoveredMs": 4.014,
+          "gcCoveredMs": 0,
+          "traceInclusiveTop": [
+            [
+              "ThreadControllerImpl::RunTask",
+              4.014
+            ],
+            [
+              "ProxyMain::BeginMainFrame",
+              3.376
+            ],
+            [
+              "v8.callFunction",
+              1.404
+            ]
+          ]
+        },
+        {
+          "id": "1/in/gap/0",
+          "elapsedMs": 785.8,
+          "taskCoveredMs": 3.412,
+          "gcCoveredMs": 0,
+          "traceInclusiveTop": [
+            [
+              "ThreadControllerImpl::RunTask",
+              3.412
+            ],
+            [
+              "ProxyMain::BeginMainFrame",
+              2.117
+            ],
+            [
+              "v8.callFunction",
+              1.823
+            ]
+          ]
+        },
+        {
+          "id": "1/in/gap/10",
+          "elapsedMs": 722.8,
+          "taskCoveredMs": 3.897,
+          "gcCoveredMs": 0,
+          "traceInclusiveTop": [
+            [
+              "ThreadControllerImpl::RunTask",
+              3.897
+            ],
+            [
+              "ProxyMain::BeginMainFrame",
+              3.297
+            ],
+            [
+              "v8.callFunction",
+              1.857
+            ]
+          ]
+        },
+        {
+          "id": "1/in/gap/1",
+          "elapsedMs": 685.2,
+          "taskCoveredMs": 4.901,
+          "gcCoveredMs": 0,
+          "traceInclusiveTop": [
+            [
+              "ThreadControllerImpl::RunTask",
+              4.901
+            ],
+            [
+              "ProxyMain::BeginMainFrame",
+              4.004
+            ],
+            [
+              "v8.callFunction",
+              1.914
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "continuous-webkit-24",
+      "kind": "ordinary",
+      "artifacts": [
+        {
+          "path": "continuous-webkit-24/workflow-continuous.json",
+          "bytes": 53877,
+          "sha256": "d8dcf0396162834fa708bdb318a535670ab54f079173148f92de2c463eed94f9"
+        }
+      ],
+      "workload": {
+        "source": {
+          "head": "f13e0754b043857cc228b9e0141c803e25008509",
+          "tree": "d764a2ae40ceb9b6f7aee259544c9a9151b792c1",
+          "dirty": false
+        },
+        "count": 24,
+        "browser": "26.5",
+        "node": "v24.22.3",
+        "gestures": [
+          {
+            "round": 0,
+            "direction": "in",
+            "receivedEvents": 8,
+            "deltaSum": -160,
+            "engineExecutions": 5,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 9,
+              "bufferBytes": 46320,
+              "uniformUploads": 6,
+              "uniformBytes": 1088,
+              "drawcalls": 20,
+              "indices": 53472,
+              "arrayVertices": 20
+            },
+            "visibleBefore": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            }
+          },
+          {
+            "round": 0,
+            "direction": "out",
+            "receivedEvents": 8,
+            "deltaSum": 160,
+            "engineExecutions": 6,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 9,
+              "bufferBytes": 55104,
+              "uniformUploads": 6,
+              "uniformBytes": 1088,
+              "drawcalls": 20,
+              "indices": 53472,
+              "arrayVertices": 20
+            },
+            "visibleBefore": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            }
+          },
+          {
+            "round": 1,
+            "direction": "in",
+            "receivedEvents": 8,
+            "deltaSum": -160,
+            "engineExecutions": 5,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 9,
+              "bufferBytes": 46320,
+              "uniformUploads": 6,
+              "uniformBytes": 1088,
+              "drawcalls": 20,
+              "indices": 51642,
+              "arrayVertices": 20
+            },
+            "visibleBefore": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            }
+          },
+          {
+            "round": 1,
+            "direction": "out",
+            "receivedEvents": 8,
+            "deltaSum": 160,
+            "engineExecutions": 5,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 9,
+              "bufferBytes": 55104,
+              "uniformUploads": 6,
+              "uniformBytes": 1088,
+              "drawcalls": 20,
+              "indices": 53472,
+              "arrayVertices": 20
+            },
+            "visibleBefore": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "continuous-trace-final-24",
+      "kind": "trace",
+      "artifacts": [
+        {
+          "path": "continuous-trace-final-24/workflow-continuous.json",
+          "bytes": 64660,
+          "sha256": "eed981a9d0032f80c796579cd55024064f9598c4ea22943fb2fe0644e12f72b1"
+        },
+        {
+          "path": "continuous-trace-final-24/workflow-continuous.raw.json",
+          "bytes": 6028406,
+          "sha256": "185a74d4c9737884059a5ff58bd2c7c76eca2b10b0b20ca40ad8e765d2582e94"
+        },
+        {
+          "path": "continuous-trace-final-24/workflow-continuous.summary.json",
+          "bytes": 45687,
+          "sha256": "47698cd563d225174abdeaba25c657423cec3a084f4a42319594e0cca8e65cd0"
+        },
+        {
+          "path": "continuous-trace-final-24/workflow-continuous.continuous-summary.json",
+          "bytes": 129224,
+          "sha256": "96bf93bd4bc69af6b7a948121b73fee38b8dbb8ec78719f810b735db8a6eb9c1"
+        }
+      ],
+      "source": {
+        "head": "f13e0754b043857cc228b9e0141c803e25008509",
+        "tree": "d764a2ae40ceb9b6f7aee259544c9a9151b792c1",
+        "dirty": false
+      },
+      "clock": {
+        "offsetMs": 7033056.774,
+        "toleranceMs": 0.2,
+        "driftMs": 0.054,
+        "bracketWidthMs": 5.4,
+        "pid": 117,
+        "tid": 117
+      },
+      "marks": {
+        "total": 30,
+        "uniqueWheelDispatch": 30,
+        "unmatched": 0,
+        "ambiguous": 0,
+        "maxReceiptToMarkMs": 0.2
+      },
+      "workload": {
+        "source": {
+          "head": "f13e0754b043857cc228b9e0141c803e25008509",
+          "tree": "d764a2ae40ceb9b6f7aee259544c9a9151b792c1",
+          "dirty": false
+        },
+        "count": 24,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "gestures": [
+          {
+            "round": 0,
+            "direction": "in",
+            "receivedEvents": 7,
+            "deltaSum": -160,
+            "engineExecutions": 7,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 9,
+              "bufferBytes": 46320,
+              "uniformUploads": 6,
+              "uniformBytes": 1088,
+              "drawcalls": 20,
+              "indices": 53472,
+              "arrayVertices": 20
+            },
+            "visibleBefore": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            }
+          },
+          {
+            "round": 0,
+            "direction": "out",
+            "receivedEvents": 8,
+            "deltaSum": 160,
+            "engineExecutions": 8,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 11,
+              "bufferBytes": 55488,
+              "uniformUploads": 8,
+              "uniformBytes": 1472,
+              "drawcalls": 28,
+              "indices": 75612,
+              "arrayVertices": 28
+            },
+            "visibleBefore": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            }
+          },
+          {
+            "round": 1,
+            "direction": "in",
+            "receivedEvents": 7,
+            "deltaSum": -160,
+            "engineExecutions": 6,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 9,
+              "bufferBytes": 46320,
+              "uniformUploads": 6,
+              "uniformBytes": 1088,
+              "drawcalls": 20,
+              "indices": 53496,
+              "arrayVertices": 20
+            },
+            "visibleBefore": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            }
+          },
+          {
+            "round": 1,
+            "direction": "out",
+            "receivedEvents": 8,
+            "deltaSum": 160,
+            "engineExecutions": 8,
+            "nativeTotals": {
+              "bufferCreates": 0,
+              "bufferDeletes": 0,
+              "bufferAllocations": 0,
+              "bufferUploads": 11,
+              "bufferBytes": 55488,
+              "uniformUploads": 8,
+              "uniformBytes": 1472,
+              "drawcalls": 28,
+              "indices": 75612,
+              "arrayVertices": 28
+            },
+            "visibleBefore": {
+              "cards": 20,
+              "edges": 20,
+              "other": 1
+            },
+            "visibleAfter": {
+              "cards": 24,
+              "edges": 24,
+              "other": 1
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "compatibility": {
+    "pairedDefaultScope": {
+      "source": {
+        "head": "43af21321ac974eb88777a086fd87d173b7444cd",
+        "tree": "81d7d09ab578c6736f1fbaf803a8127ea227dee9",
+        "dirty": false
+      },
+      "artifacts": [
+        {
+          "path": "paired-trace-2/camera-replay-strokes.json",
+          "bytes": 2123342,
+          "sha256": "0ba31500d912df74f02dd6352d2d2118eaf6120666ccf542adfe6559216a77b6"
+        },
+        {
+          "path": "paired-trace-2/core.raw.json",
+          "bytes": 687261,
+          "sha256": "1a9c4084fdc8cf5df7e90ff39066701385c521900d1f1234df22ab5d4979c4cf"
+        },
+        {
+          "path": "paired-trace-2/core.summary.json",
+          "bytes": 9188,
+          "sha256": "06fbb103ee42166c323db3abe0ed4b8b29fe4a2099f0e36b5b8e5f17491b8f27"
+        },
+        {
+          "path": "paired-trace-2/ecs.raw.json",
+          "bytes": 1177293,
+          "sha256": "c1b30efbad6cba88fbc8a04a7adabf481b461c92ec709a101bc4f5293e4fd52c"
+        },
+        {
+          "path": "paired-trace-2/ecs.summary.json",
+          "bytes": 10620,
+          "sha256": "e9ca4de4574072699b85bdbac2f3219b21af21d8b3428d5fdba86a35783fb8ed"
+        }
+      ],
+      "backends": [
+        {
+          "backend": "core",
+          "documentSame": true,
+          "teardown": "passed",
+          "frames": 24
+        },
+        {
+          "backend": "ecs",
+          "documentSame": true,
+          "teardown": "passed",
+          "frames": 24
+        }
+      ]
+    }
+  },
+  "rejected": [
+    {
+      "id": "continuous-trace-24",
+      "cause": "Clock bracket too wide",
+      "bracketWidthMs": 18.7,
+      "limitMs": 10,
+      "qualified": false,
+      "artifacts": [
+        {
+          "path": "continuous-trace-24/workflow-continuous.raw.json",
+          "bytes": 6408432,
+          "sha256": "3c84869a22742f2b8bc6b6a04fae1cbbfc698e25e94f5393f5fd953c9fd358fa"
+        },
+        {
+          "path": "continuous-trace-24/workflow-continuous.json",
+          "bytes": 66663,
+          "sha256": "b15e8b6b9b80ba792115e342447423cfecedc6a342f9337f1fe331d5292b02fe"
+        }
+      ]
+    },
+    {
+      "id": "paired-trace",
+      "cause": "Initial invocation used the wrong browser-path environment variable; no browser launched.",
+      "qualified": false
+    }
+  ]
+}

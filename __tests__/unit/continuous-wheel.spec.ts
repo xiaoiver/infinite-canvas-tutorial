@@ -76,3 +76,38 @@ it('keeps UI accumulation separate from Float32 completed-camera normalization',
   const r = c.finish();
   expect(r.events.at(-1)!.requested.x).toBeCloseTo(100000.3, 8);
 });
+
+it('marks only accepted input under an explicit diagnostic callback', () => {
+  let time = 1;
+  const calls: number[] = [];
+  const c = continuousWheel(
+    (v, i: { isTrusted: boolean; dx: number }) => ({ ...v, x: v.x + i.dx }),
+    () => time,
+    (v) => v,
+    (sequence) => {
+      calls.push(sequence);
+      return { name: 'input-' + sequence, pageMs: time };
+    },
+  );
+  c.start(initial);
+  c.observe({ isTrusted: true, dx: 1 });
+  time = 2;
+  c.frame(2, 2, { ...initial, x: 1 }, {});
+  expect(c.finish().events[0].traceMark).toEqual({
+    name: 'input-1',
+    pageMs: 1,
+  });
+  expect(calls).toEqual([1]);
+  c.start(initial);
+  c.observe({ isTrusted: false, dx: 1 });
+  expect(calls).toEqual([1]);
+  c.dispose();
+  const ordinary = continuousWheel(
+    (v) => v,
+    () => time,
+  );
+  ordinary.start(initial);
+  ordinary.observe({ isTrusted: true });
+  ordinary.frame(2, 2, initial, {});
+  expect(ordinary.finish().events[0]).not.toHaveProperty('traceMark');
+});

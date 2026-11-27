@@ -5,12 +5,14 @@ export function continuousWheel<I extends { isTrusted: boolean }, N>(
   advance: (view: ReplayView, input: I) => ReplayView,
   now = () => performance.now(),
   normalizeTarget = (view: ReplayView) => view,
+  markInput?: (sequence: number) => { name: string; pageMs: number },
 ) {
   type Input = {
     sequence: number;
     receivedAt: number;
     input: I;
     requested: ReplayView;
+    traceMark?: { name: string; pageMs: number };
   };
   type Frame = {
     startedAt: number;
@@ -69,6 +71,7 @@ export function continuousWheel<I extends { isTrusted: boolean }, N>(
           receivedAt,
           input: { ...input },
           requested: { ...target },
+          ...(markInput ? { traceMark: markInput(events.length + 1) } : {}),
         });
       } catch (error) {
         errors.push(String(error));

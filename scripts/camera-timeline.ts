@@ -9,13 +9,25 @@ import {
 
 type Window = { id: string; startedAt: number; completedAt: number };
 /** Opt-in diagnostic: never part of ordinary elapsed-time comparisons. */
-export async function startCameraTimeline(page: Page, name: string) {
+export async function startCameraTimeline(
+  page: Page,
+  name: string,
+  scope: 'engine' | 'continuous-input' = 'engine',
+) {
   const directory = process.env.CAMERA_TIMELINE_DIR;
   if (!directory) return;
   const kind = process.env.CAMERA_TIMELINE_MODE ?? 'profile';
   if (kind !== 'profile' && kind !== 'trace')
     throw new Error('CAMERA_TIMELINE_MODE must be profile or trace');
   const traceOnly = kind === 'trace';
+  if (scope !== 'engine' && scope !== 'continuous-input')
+    throw new Error('Unknown timeline scope');
+  if (scope === 'continuous-input' && !traceOnly)
+    throw new Error('Continuous timeline requires trace-only mode');
+  const categories =
+    scope === 'continuous-input'
+      ? 'toplevel,devtools.timeline,v8,blink.user_timing,cc,gpu,viz,input,latencyInfo,benchmark'
+      : 'toplevel,devtools.timeline,v8,blink.user_timing';
   const session = await page.context().newCDPSession(page);
   const traceEvents: any[] = [];
   session.on('Tracing.dataCollected', ({ value }) =>
@@ -50,7 +62,7 @@ export async function startCameraTimeline(page: Page, name: string) {
       await session.send('Profiler.setSamplingInterval', { interval: 1000 });
     }
     await session.send('Tracing.start', {
-      categories: 'toplevel,devtools.timeline,v8,blink.user_timing',
+      categories,
       options: 'record-as-much-as-possible',
       transferMode: 'ReportEvents',
     });
@@ -94,6 +106,7 @@ export async function startCameraTimeline(page: Page, name: string) {
             schema: 1,
             mode: 'camera-timeline-diagnostic',
             captureKind: traceOnly ? 'trace-only' : 'profile',
+            ...(scope === 'continuous-input' ? { scope, categories } : {}),
             anchors: [first, last],
             clockBracket: { beforeMs, afterMs, timestampMs },
             ...(traceOnly ? {} : { profile }),

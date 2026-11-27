@@ -1,6 +1,12 @@
+import { startCameraTimeline } from './camera-timeline';
+import {
+  continuousTimelineMode,
+  continuousTimelineWindows,
+  analyzeContinuousTimeline,
+} from './continuous-timeline-tools.mjs';
 import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { installProbes } from '../__tests__/browser/fixtures/probes';
 import { summarizeWorkflowContinuous } from './workflow-continuous-tools.mjs';
@@ -9,14 +15,9 @@ import type {} from '../examples/workflow-canvas/benchmark-entry';
 test('continuous trusted wheel stream reaches the final Workflow camera without per-input frame waits', async ({
   browser,
 }) => {
-  for (const k of [
-    'CAMERA_PHASES',
-    'CAMERA_TIMELINE_DIR',
-    'STROKE_UPLOAD_DIAGNOSTIC',
-    'STROKE_TEXTURE_BENCH',
-  ])
-    if (process.env[k])
-      throw new Error('Continuous input requires its own unprofiled capture');
+  const timelineMode = continuousTimelineMode();
+  if (timelineMode && browser.browserType().name() !== 'chromium')
+    throw new Error('Continuous timeline requires Chromium CDP');
   const count = Number(process.env.WORKFLOW_INPUT_COUNT ?? 2400);
   if (![24, 2400].includes(count))
     throw new Error('Use 24 for correctness or 2400 for measurement');
@@ -26,7 +27,17 @@ test('continuous trusted wheel stream reaches the final Workflow camera without 
     execFileSync('git', args, { encoding: 'utf8' }).trim();
   const capture = {
     schema: 1,
-    mode: 'continuous-input',
+    mode: timelineMode ? 'continuous-input-timeline' : 'continuous-input',
+    ...(timelineMode
+      ? {
+          timeline: {
+            captureKind: 'trace-only',
+            scope: 'continuous-input',
+            stopped: false,
+            marksCleared: false,
+          },
+        }
+      : {}),
     workload: 'workflow-continuous-wheel',
     count,
     commandCount,
@@ -58,9 +69,12 @@ test('continuous trusted wheel stream reaches the final Workflow camera without 
   });
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  let timeline: Awaited<ReturnType<typeof startCameraTimeline>>;
   try {
     await page.addInitScript(installProbes, { resourceStacks: false });
-    await page.goto('/?imageBatching=1');
+    await page.goto(
+      '/?imageBatching=1' + (timelineMode ? '&continuousTrace=1' : ''),
+    );
     await page.waitForFunction(() => window.workflowDemo?.snapshot().ready);
     await page.locator('#scale').selectOption(String(count));
     await page.waitForFunction(
@@ -79,7 +93,7 @@ test('continuous trusted wheel stream reaches the final Workflow camera without 
     await page.evaluate(() => window.workflowBenchmark.collect(2, 0));
     // Positive control: this observer cannot certify synthetic DOM dispatch.
     await page.evaluate(() => {
-      window.workflowBenchmark.startContinuousWheel();
+      window.workflowBenchmark.startContinuousWheel('control');
       document
         .querySelector('#canvas')!
         .dispatchEvent(new WheelEvent('wheel', { deltaY: -1 }));
@@ -95,6 +109,12 @@ test('continuous trusted wheel stream reaches the final Workflow camera without 
     const documentBefore = await page.evaluate(() =>
       window.workflowBenchmark.replayDocument(),
     );
+    if (timelineMode)
+      timeline = await startCameraTimeline(
+        page,
+        'workflow-continuous',
+        'continuous-input',
+      );
     for (const round of [0, 1]) {
       await page.locator('#overview').click();
       await page.evaluate(() => window.workflowBenchmark.collect(2, 0));
@@ -112,8 +132,9 @@ test('continuous trusted wheel stream reaches the final Workflow camera without 
           window.workflowBenchmark.checkInputErrors(),
         );
         expect(before.errors).toEqual([]);
-        const initial = await page.evaluate(() =>
-          window.workflowBenchmark.startContinuousWheel(),
+        const initial = await page.evaluate(
+          (label) => window.workflowBenchmark.startContinuousWheel(label),
+          `${round}-${direction}`,
         );
         if (direction === 'in')
           expect(initial.state.visible).toMatchObject({
@@ -190,6 +211,10 @@ test('continuous trusted wheel stream reaches the final Workflow camera without 
         save();
       }
     }
+    if (timeline) {
+      await timeline.stop(continuousTimelineWindows(capture));
+      capture.timeline!.stopped = true;
+    }
     expect(
       await page.evaluate(() => window.workflowBenchmark.replayDocument()),
     ).toEqual(documentBefore);
@@ -201,10 +226,50 @@ test('continuous trusted wheel stream reaches the final Workflow camera without 
       [],
     );
     expect(errors).toEqual([]);
+    if (timelineMode) {
+      expect(
+        await page.evaluate(
+          () =>
+            performance
+              .getEntriesByType('mark')
+              .filter((e) => e.name.startsWith('continuous-wheel-')).length,
+        ),
+      ).toBe(0);
+      capture.timeline!.marksCleared = true;
+    }
     capture.teardown = 'passed';
     save();
-    console.log(JSON.stringify(summarizeWorkflowContinuous(capture)));
+    if (timelineMode) {
+      const raw = JSON.parse(
+        readFileSync(
+          join(
+            process.env.CAMERA_TIMELINE_DIR!,
+            'workflow-continuous.raw.json',
+          ),
+          'utf8',
+        ),
+      );
+      const summary = analyzeContinuousTimeline(raw, capture);
+      writeFileSync(
+        join(
+          process.env.CAMERA_TIMELINE_DIR!,
+          'workflow-continuous.continuous-summary.json',
+        ),
+        JSON.stringify(summary, null, 2) + '\n',
+      );
+      console.log(
+        JSON.stringify({
+          mode: summary.mode,
+          marks: summary.marks,
+          parts: summary.parts.map(({ byThread, ...part }) => ({
+            ...part,
+            threads: byThread.length,
+          })),
+        }),
+      );
+    } else console.log(JSON.stringify(summarizeWorkflowContinuous(capture)));
   } finally {
+    await timeline?.abort();
     save();
     await page.close();
   }
