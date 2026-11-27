@@ -31,6 +31,7 @@ export class EventDisposer extends System {
       Object.assign(input, {
         pointerSamples: [],
         wheelTrigger: false,
+        wheelSamples: [],
         ctrlKey: false,
         metaKey: false,
         shiftKey: false,

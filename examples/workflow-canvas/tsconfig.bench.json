@@ -10,6 +10,8 @@
     "../../scripts/workflow-replay.bench.spec.ts",
     "../../playwright.workflow-replay-bench.config.ts",
     "../../scripts/workflow-input.bench.spec.ts",
-    "../../playwright.workflow-input-bench.config.ts"
+    "../../playwright.workflow-input-bench.config.ts",
+    "../../scripts/workflow-continuous.bench.spec.ts",
+    "../../playwright.workflow-continuous-bench.config.ts"
   ]
 }

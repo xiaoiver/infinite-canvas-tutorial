@@ -253,6 +253,20 @@ SmoothPolyline.prototype.createGeometry = function () {
 };
 let migrationCameras: { primary: Entity; secondary: Entity } | undefined;
 const harness = {
+  async navigationView(view?: {
+    x: number;
+    y: number;
+    zoom: number;
+    rotation: number;
+  }) {
+    if (view)
+      await api.edit((e) => e.gotoLandmark(view, { duration: 0 }), {
+        capture: 'NEVER',
+      });
+    await frames();
+    const { x, y, zoom, rotation } = api.getCamera().read(ComputedCamera);
+    return { x, y, zoom, rotation };
+  },
   constructors: () => draws().map((d) => d.constructor.name),
   spatialMembership: () =>
     [...pipeline.renderers.keys()].map((camera) =>

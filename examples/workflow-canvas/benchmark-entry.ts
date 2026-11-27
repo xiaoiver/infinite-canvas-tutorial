@@ -1,3 +1,5 @@
+import { continuousWheel } from '../../__tests__/browser/fixtures/continuous-wheel';
+import { zoomAt } from './graph';
 import { installECSCameraPhases } from '../../__tests__/browser/fixtures/ecs-camera-phases';
 import {
   inputReplay,
@@ -136,15 +138,38 @@ const wheelInput = inputReplay<ReturnType<typeof wheelSnapshot>, WheelSample>(
   wheelReplay,
   () => float32ReplayTarget(window.workflowDemo.snapshot().view),
 );
+const continuous = continuousWheel<
+  WheelSample,
+  ReturnType<typeof native.snapshot>
+>(
+  (view, input) => {
+    if (input.deltaMode !== 0 || input.deltaX !== 0)
+      throw new Error('Continuous benchmark requires pixel zoom input');
+    const bounds = canvas.getBoundingClientRect();
+    return zoomAt(
+      view,
+      view.zoom *
+        Math.exp(-Math.max(-100, Math.min(100, input.deltaY)) * 0.0025),
+      input.clientX - bounds.left,
+      input.clientY - bounds.top,
+    );
+  },
+  () => performance.now(),
+  float32ReplayTarget,
+);
+let continuousDeltaY = 0;
 function observeWheel(event: WheelEvent) {
-  wheelInput.observe({
+  const sample = {
     isTrusted: event.isTrusted,
     deltaX: event.deltaX,
     deltaY: event.deltaY,
     deltaMode: event.deltaMode,
     clientX: event.clientX,
     clientY: event.clientY,
-  });
+  };
+  wheelInput.observe(sample);
+  if (continuous.busy && sample.isTrusted) continuousDeltaY += sample.deltaY;
+  continuous.observe(sample);
 }
 // Registered before main.ts: observation does not cancel or replace its handler.
 canvas.addEventListener('wheel', observeWheel, {
@@ -156,11 +181,29 @@ ECS.App.prototype.run = async function () {
   const result = await originalRun.call(this);
   runtime.app = this;
   runtime.api!.onDestroy(() => {
+    continuous.dispose();
     replay.dispose();
     wheelInput.dispose();
   });
   const execute = this.world.execute.bind(this.world);
   this.world.execute = (...args: Parameters<typeof execute>) => {
+    if (continuous.busy) {
+      const pending = (async () => {
+        native.reset();
+        const startedAt = performance.now();
+        await execute(...args);
+        const completedAt = performance.now();
+        const c = runtime.api!.getCamera().read(ECS.ComputedCamera);
+        continuous.frame(
+          startedAt,
+          completedAt,
+          { x: c.x, y: c.y, zoom: c.zoom },
+          native.snapshot(),
+        );
+      })();
+      inFlight = pending;
+      return pending;
+    }
     if (!active)
       return wheelReplay.busy
         ? wheelReplay.run(() => execute(...args))
@@ -199,7 +242,7 @@ ECS.App.prototype.run = async function () {
 function profile(enabled: boolean) {
   if (detailedWheelPhases)
     throw new Error('Detailed wheel phases require a dedicated capture');
-  if (active || inFlight || replay.busy || wheelInput.busy)
+  if (active || inFlight || replay.busy || wheelInput.busy || continuous.busy)
     throw new Error('Stop measurement before changing instrumentation');
   phases?.dispose();
   phases = undefined;
@@ -277,7 +320,7 @@ function state(checkErrors = true) {
   };
 }
 function begin() {
-  if (active || inFlight || replay.busy || wheelInput.busy)
+  if (active || inFlight || replay.busy || wheelInput.busy || continuous.busy)
     throw new Error('Finish the previous capture first');
   samples = [];
   previous = 0;
@@ -294,6 +337,46 @@ async function end() {
   }
 }
 const harness = {
+  startContinuousWheel() {
+    if (
+      detailedWheelPhases ||
+      phases ||
+      disposed ||
+      !window.workflowDemo.snapshot().ready
+    )
+      throw new Error('Use a ready ordinary page for continuous input');
+    begin();
+    active = false;
+    const initial = window.workflowDemo.snapshot().view;
+    continuousDeltaY = 0;
+    continuous.start(initial);
+    return {
+      view: initial,
+      state: state(false),
+      surface: replaySurface(canvas),
+    };
+  },
+  continuousWheelStatus: () => ({
+    ...continuous.status(),
+    deltaY: continuousDeltaY,
+  }),
+  async finishContinuousWheel() {
+    await inFlight;
+    const stream = continuous.finish();
+    await end();
+    return {
+      ...stream,
+      final: {
+        uiView: window.workflowDemo.snapshot().view,
+        state: state(false),
+        surface: replaySurface(canvas),
+      },
+    };
+  },
+  async cancelContinuousWheel() {
+    continuous.cancel();
+    await end();
+  },
   armWheel(mode: 'ordinary' | 'phases' = 'ordinary') {
     if (
       (mode !== 'ordinary' && mode !== 'phases') ||
@@ -304,6 +387,7 @@ const harness = {
       );
     if (
       active ||
+      continuous.busy ||
       inFlight ||
       replay.busy ||
       phases ||
@@ -323,7 +407,7 @@ const harness = {
   },
   wheelResult: () => wheelInput.take(),
   checkInputErrors() {
-    if (wheelInput.busy || wheelReplay.busy)
+    if (wheelInput.busy || wheelReplay.busy || continuous.busy)
       throw new Error('Finish wheel capture before GPU validation');
     const startedAt = performance.now();
     const errors: number[] = [];
@@ -457,6 +541,7 @@ const harness = {
   async dispose() {
     if (disposed) return;
     disposed = true;
+    continuous.dispose();
     replay.dispose();
     wheelInput.dispose();
     canvas.removeEventListener('wheel', observeWheel, true);

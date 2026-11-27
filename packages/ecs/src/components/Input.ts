@@ -9,6 +9,17 @@ export interface PointerSample {
   pointerType: 'mouse' | 'touch' | 'pen';
 }
 
+/** Ordered navigation inputs received since the previous engine execution. */
+export interface WheelSample {
+  deltaX: number;
+  deltaY: number;
+  viewportX: number;
+  viewportY: number;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+}
+
 export class Input {
   /** Active-pointer samples since the previous frame, in viewport CSS pixels. */
   @field({ type: Type.object, default: [] })
@@ -57,6 +68,10 @@ export class Input {
   @field.boolean declare metaKey: boolean;
 
   @field.boolean declare wheelTrigger: boolean;
+
+  /** Own numeric samples; never retain browser events or canvas/entity handles. */
+  @field({ type: Type.object, default: [] })
+  declare wheelSamples: WheelSample[];
 
   @field.float32 declare deltaX: number;
 

@@ -148,3 +148,50 @@ it('keeps linked orthographic cameras on the original 2D input path', async () =
   await wheel(20, 0);
   expect(api.getCamera().read(ComputedCamera).x).toBeCloseTo(20);
 });
+
+it('replays 3D wheel modes and pivots in receipt order before a frame', async () => {
+  const steps: WheelEventInit[] = [
+    { deltaY: -20, ctrlKey: true, clientX: 60, clientY: 80 },
+    { deltaX: 20, deltaY: 5, shiftKey: true, clientX: 100, clientY: 120 },
+    { deltaY: 10, metaKey: true, clientX: 140, clientY: 60 },
+  ];
+  const dispatch = (step: WheelEventInit) =>
+    api
+      .getCanvasElement()
+      .dispatchEvent(
+        new world.window.WheelEvent('wheel', {
+          bubbles: true,
+          cancelable: true,
+          ...step,
+        }),
+      );
+  for (const step of steps) {
+    dispatch(step);
+    await world.frames();
+  }
+  const expected = {
+    center: [...view().center],
+    eye: [...view().eye],
+    height: view().orthographicHeight,
+  };
+  await world.edit(
+    api,
+    (e) =>
+      e.setCamera3D({
+        preset: 'isometric',
+        center: [0, 0, 0],
+        distance: 500,
+        orthographicHeight: 200,
+      }),
+    'NEVER',
+  );
+  await world.frames();
+  steps.forEach(dispatch);
+  await world.frames();
+  expect(view().orthographicHeight).toBeCloseTo(expected.height, 3);
+  for (let i = 0; i < 3; i++) {
+    expect(view().center[i]).toBeCloseTo(expected.center[i], 3);
+    expect(view().eye[i]).toBeCloseTo(expected.eye[i], 3);
+  }
+  expect(api.getCanvas().read(Input).wheelSamples).toEqual([]);
+});

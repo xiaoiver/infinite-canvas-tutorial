@@ -5,7 +5,7 @@ let world: Awaited<ReturnType<typeof createSelectionWorld>>;
 let api: API;
 
 beforeAll(async () => {
-  world = await createSelectionWorld();
+  world = await createSelectionWorld(2);
   [api] = world.apis;
 });
 
@@ -178,4 +178,126 @@ it('composes touch pan with pinch zoom in one frame', async () => {
   const after = api.canvas2Viewport(pivot);
   expect(after.x).toBeCloseTo(120, 3);
   expect(after.y).toBeCloseTo(100, 3);
+});
+
+it('preserves every wheel pan delivered before one execution', async () => {
+  for (const [deltaX, deltaY] of [
+    [20, -10],
+    [8, 6],
+    [-4, 2],
+  ])
+    api.getCanvasElement().dispatchEvent(
+      new world.window.WheelEvent('wheel', {
+        bubbles: true,
+        cancelable: true,
+        clientX: 100,
+        clientY: 100,
+        deltaX,
+        deltaY,
+      }),
+    );
+  world.assertNoErrors();
+  await world.frames();
+  const camera = api.getCamera().read(ComputedCamera);
+  expect(camera.x).toBeCloseTo(12, 4);
+  expect(camera.y).toBeCloseTo(-1, 4);
+});
+
+type WheelStep = WheelEventInit & { deltaX: number; deltaY: number };
+const dispatchWheel = (step: WheelStep) => {
+  api.getCanvasElement().dispatchEvent(
+    new world.window.WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 100,
+      clientY: 100,
+      ...step,
+    }),
+  );
+  world.assertNoErrors();
+};
+const currentView = () => {
+  const { x, y, zoom, rotation } = api.getCamera().read(ComputedCamera);
+  return { x, y, zoom, rotation };
+};
+it.each([
+  [
+    [
+      { deltaX: 20, deltaY: -10 },
+      { deltaX: -4, deltaY: 6 },
+    ],
+  ],
+  [
+    [
+      { deltaX: 0, deltaY: -10, ctrlKey: true, clientX: 30, clientY: 70 },
+      { deltaX: 20, deltaY: 3 },
+      { deltaX: 0, deltaY: 15, metaKey: true, clientX: 160, clientY: 110 },
+    ],
+  ],
+  [
+    [
+      { deltaX: 0, deltaY: -1000, ctrlKey: true },
+      { deltaX: 0, deltaY: 10, ctrlKey: true },
+      { deltaX: 0, deltaY: 1000, ctrlKey: true },
+      { deltaX: 0, deltaY: -20, ctrlKey: true },
+    ],
+  ],
+])(
+  'matches sequential execution for ordered wheel burst %j',
+  async (steps: WheelStep[]) => {
+    const reset = async () => {
+      await world.edit(
+        api,
+        (e) =>
+          e.gotoLandmark(
+            { x: 12, y: -8, zoom: 2, rotation: Math.PI / 3 },
+            { duration: 0 },
+          ),
+        'NEVER',
+      );
+      await world.frames();
+    };
+    await reset();
+    for (const step of steps) {
+      dispatchWheel(step);
+      await world.frames();
+    }
+    const expected = currentView();
+    await reset();
+    const document = api.getNodes();
+    steps.forEach(dispatchWheel);
+    // Later keyboard updates must not rewrite the modifiers on prior samples.
+    api
+      .getCanvasElement()
+      .dispatchEvent(
+        new world.window.KeyboardEvent('keyup', {
+          key: 'Control',
+          bubbles: true,
+        }),
+      );
+    await world.frames();
+    const actual = currentView();
+    for (const key of ['x', 'y', 'zoom', 'rotation'] as const)
+      expect(actual[key]).toBeCloseTo(expected[key], 3);
+    expect(api.getNodes()).toEqual(document);
+    expect(api.getCanvas().read(Input).wheelSamples).toEqual([]);
+    await world.frames();
+    expect(currentView()).toEqual(actual);
+  },
+);
+
+it('does not share pending wheel samples between canvases', async () => {
+  const other = world.apis[1];
+  const before = {
+    x: other.getCamera().read(ComputedCamera).x,
+    y: other.getCamera().read(ComputedCamera).y,
+  };
+  dispatchWheel({ deltaX: 10, deltaY: 20 });
+  expect(api.getCanvas().read(Input).wheelSamples).toHaveLength(1);
+  expect(other.getCanvas().read(Input).wheelSamples).toEqual([]);
+  await world.frames();
+  expect({
+    x: other.getCamera().read(ComputedCamera).x,
+    y: other.getCamera().read(ComputedCamera).y,
+  }).toEqual(before);
 });
