@@ -1,3 +1,9 @@
+import { workflowCompositionMode } from './workflow-composition-tools.mjs';
+import { summarizeWorkflowComposition } from './workflow-input-tools.mjs';
+import {
+  installWorkflowComposition,
+  type CompositionCondition,
+} from '../__tests__/browser/fixtures/workflow-composition';
 import {
   strokeUploadMode,
   summarizeStrokeUploads,
@@ -19,6 +25,9 @@ import type {} from '../examples/workflow-canvas/benchmark-entry';
 test('trusted Workflow wheel path preserves the document and GPU ownership', async ({
   browser,
 }) => {
+  const compositionMode = workflowCompositionMode() as
+    | CompositionCondition
+    | undefined;
   const phaseMode = cameraPhaseMode();
   const uploadMode = strokeUploadMode();
   const count = Number(process.env.WORKFLOW_INPUT_COUNT ?? 2400);
@@ -38,7 +47,12 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
   const capture = {
     schema: 1,
     uploadProbeRestored: undefined as boolean | undefined,
-    mode: uploadMode
+    composition: undefined as
+      | Awaited<ReturnType<typeof installWorkflowComposition>>['metadata']
+      | undefined,
+    mode: compositionMode
+      ? 'workflow-composition-diagnostic'
+      : uploadMode
       ? 'stroke-upload-diagnostic'
       : phaseMode
       ? 'camera-phase-diagnostic'
@@ -68,6 +82,9 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
       join(directory, 'workflow-input.json'),
       JSON.stringify(capture, null, 2) + '\n',
     );
+  let composition:
+    | Awaited<ReturnType<typeof installWorkflowComposition>>
+    | undefined;
   let timeline: Awaited<ReturnType<typeof startCameraTimeline>>;
   try {
     if (uploadMode) await installStrokeUploadProbe(page);
@@ -93,6 +110,10 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
         .some((n) => n.id === 'selection' && n.visibility === 'visible'),
     );
     await page.evaluate(() => window.workflowBenchmark.collect(2, 0));
+    if (compositionMode) {
+      composition = await installWorkflowComposition(page, compositionMode);
+      capture.composition = composition.metadata;
+    }
     expect(
       await page.evaluate((mode) => {
         try {
@@ -170,6 +191,7 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
       const round = {
         index,
         initial,
+        ...(composition ? { compositionBefore: await composition.read() } : {}),
         validationBefore,
         steps: [] as any[],
         validationAfter: undefined as unknown,
@@ -190,10 +212,18 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
             window.workflowBenchmark.armWheel(mode ? 'phases' : 'ordinary'),
           phaseMode,
         );
+        const dispatchedAt = composition ? performance.now() : undefined;
         await page.mouse.wheel(0, deltaY);
+        const acknowledgedAt = composition ? performance.now() : undefined;
         const row = await page.evaluate(() =>
           window.workflowBenchmark.wheelResult(),
         );
+        if (composition)
+          (row as any).compositionHost = {
+            dispatchedAt,
+            acknowledgedAt,
+            resultObservedAt: performance.now(),
+          };
         expect(row.input.isTrusted).toBe(true);
         expect(row.input.deltaMode).toBe(0);
         expect(row.input.deltaY).toBe(deltaY);
@@ -216,6 +246,8 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
         view = expected;
         save();
       }
+      if (composition)
+        (round as any).compositionAfter = await composition.read();
       round.validationAfter = await page.evaluate(() =>
         window.workflowBenchmark.checkInputErrors(),
       );
@@ -242,6 +274,11 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
       capture.uploadProbeRestored = await page.evaluate(() =>
         (window as any).strokeUploadProbe.dispose(),
       );
+    if (composition) {
+      capture.composition!.after = await composition.restore();
+      expect(capture.composition!.after).toEqual(capture.composition!.before);
+      capture.composition!.restored = true;
+    }
     // Pending input must reject on real example teardown, without leaking listeners.
     expect(
       await page.evaluate(async (mode) => {
@@ -264,42 +301,49 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
     expect(errors).toEqual([]);
     capture.teardown = 'passed';
     save();
-    for (const round of capture.rounds) {
-      const frames = round.steps.flatMap((s) => s.frames);
-      const summary = (values: number[]) => ({
-        p50: percentile(values, 0.5),
-        p95: percentile(values, 0.95),
-        total: values.reduce((a, b) => a + b, 0),
-      });
-      console.log(
-        JSON.stringify({
-          mode: capture.mode,
-          ...(phaseMode ? { phaseSummary: sumCameraPhases(frames) } : {}),
-          round: round.index,
-          count,
-          events: round.steps.length,
-          frames: frames.length,
-          cpuMs: summary(frames.map((f) => f.elapsed)),
-          matchedCpuMs: summary(
-            round.steps.map((s) => s.frames.at(-1)!.elapsed),
-          ),
-          observationMs: summary(frames.map((f) => f.observationMs)),
-          inputToFrameMs: summary(round.steps.map((s) => s.inputToFrameMs)),
-          inputToResultMs: summary(round.steps.map((s) => s.inputToResultMs)),
-          drawcalls: frames.map((f) => f.data.native.drawcalls),
-          indices: frames.map((f) => f.data.native.indices),
-          arrayVertices: frames.map((f) => f.data.native.arrayVertices),
-          visibleCards: frames.map((f) => f.data.state.visible.cards),
-          visibleEdges: frames.map((f) => f.data.state.visible.edges),
-          bufferBytes: frames.map((f) => f.data.state.allocatedBufferBytes),
-          validationAfter: round.validationAfter,
-        }),
-      );
-    }
+    if (composition)
+      console.log(JSON.stringify(summarizeWorkflowComposition(capture)));
+    else
+      for (const round of capture.rounds) {
+        const frames = round.steps.flatMap((s) => s.frames);
+        const summary = (values: number[]) => ({
+          p50: percentile(values, 0.5),
+          p95: percentile(values, 0.95),
+          total: values.reduce((a, b) => a + b, 0),
+        });
+        console.log(
+          JSON.stringify({
+            mode: capture.mode,
+            ...(phaseMode ? { phaseSummary: sumCameraPhases(frames) } : {}),
+            round: round.index,
+            count,
+            events: round.steps.length,
+            frames: frames.length,
+            cpuMs: summary(frames.map((f) => f.elapsed)),
+            matchedCpuMs: summary(
+              round.steps.map((s) => s.frames.at(-1)!.elapsed),
+            ),
+            observationMs: summary(frames.map((f) => f.observationMs)),
+            inputToFrameMs: summary(round.steps.map((s) => s.inputToFrameMs)),
+            inputToResultMs: summary(round.steps.map((s) => s.inputToResultMs)),
+            drawcalls: frames.map((f) => f.data.native.drawcalls),
+            indices: frames.map((f) => f.data.native.indices),
+            arrayVertices: frames.map((f) => f.data.native.arrayVertices),
+            visibleCards: frames.map((f) => f.data.state.visible.cards),
+            visibleEdges: frames.map((f) => f.data.state.visible.edges),
+            bufferBytes: frames.map((f) => f.data.state.allocatedBufferBytes),
+            validationAfter: round.validationAfter,
+          }),
+        );
+      }
     if (uploadMode)
       console.log(JSON.stringify(summarizeStrokeUploads(capture)));
   } finally {
     await timeline?.abort();
+    if (composition && !capture.composition?.restored)
+      await composition.restore().catch(() => {});
+    // Retain unqualified experimental setup/cleanup records as well.
+    if (compositionMode) save();
     await page.close();
   }
 });
