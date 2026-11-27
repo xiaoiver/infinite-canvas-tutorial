@@ -1,4 +1,5 @@
-import { Path, Rect } from '../../packages/core/src';
+import { createCanvas } from 'canvas';
+import { DOMAdapter, Path, Rect } from '../../packages/core/src';
 import { StrokeBatch } from '../../packages/core/src/drawcalls/StrokeBatch';
 import * as packing from '../../packages/core/src/utils/stroke-batching';
 import { strokePackingContract } from '../contracts/stroke-batching';
@@ -137,5 +138,42 @@ it('keeps finite extreme/negative-zero translations out of material identity', (
     p.worldTransform.tx = value;
     p.worldTransform.ty = -value;
     expect(StrokeBatch.batchKey(p)).toBe(key);
+  }
+});
+
+import { BatchManager } from '../../packages/core/src/drawcalls/BatchManager';
+it('reclassifies raw mutable colors when visible membership changes', () => {
+  const canvas = jest
+    .spyOn(DOMAdapter.get(), 'createCanvas')
+    .mockImplementation(
+      (width = 1, height = 1) => createCanvas(width, height) as any,
+    );
+  const batch = new BatchManager(null);
+  const a = path(),
+    b = path(),
+    c = path();
+  const frame = (shapes: Path[]) => {
+    batch.clear(true, true);
+    shapes.forEach((shape) => batch.add(shape));
+    (batch as any).planOrdered();
+  };
+  try {
+    frame([a, b, c]);
+    expect(batch.stats().drawcallCount).toBe(1);
+    for (const shape of [a, b, c]) {
+      shape.renderDirtyFlag = false;
+      shape.geometryDirtyFlag = false;
+      shape.materialDirtyFlag = false;
+    }
+    a.strokeRGB.r = 17;
+    frame([a, b]);
+    expect(batch.stats().drawcallCount).toBe(2);
+    expect(StrokeBatch.batchKey(a)).not.toBe(StrokeBatch.batchKey(b));
+    a.strokeRGB.r = b.strokeRGB.r;
+    frame([a, b, c]);
+    expect(batch.stats().drawcallCount).toBe(1);
+  } finally {
+    batch.destroy();
+    canvas.mockRestore();
   }
 });

@@ -1,0 +1,1469 @@
+{
+  "sources": {
+    "workflow/control-1": {
+      "head": "c365717f3fd694b1d6f362ba8ab950a5f4ed9cd6",
+      "tree": "cf2813093e1d38456d1b7d385289ff7a0aa6be84",
+      "dirty": false
+    },
+    "workflow/candidate-1": {
+      "head": "2d8720a82e13e3567681a847f3b7021d7d9c829f",
+      "tree": "d5932f0fe4f60cf787f5e977c94ad8cd11f8e0d6",
+      "dirty": false
+    },
+    "workflow/candidate-2": {
+      "head": "2d8720a82e13e3567681a847f3b7021d7d9c829f",
+      "tree": "d5932f0fe4f60cf787f5e977c94ad8cd11f8e0d6",
+      "dirty": false
+    },
+    "workflow/control-2": {
+      "head": "c365717f3fd694b1d6f362ba8ab950a5f4ed9cd6",
+      "tree": "cf2813093e1d38456d1b7d385289ff7a0aa6be84",
+      "dirty": false
+    },
+    "strokes/control-1": {
+      "head": "c365717f3fd694b1d6f362ba8ab950a5f4ed9cd6",
+      "tree": "cf2813093e1d38456d1b7d385289ff7a0aa6be84",
+      "dirty": false
+    },
+    "strokes/candidate-1": {
+      "head": "2d8720a82e13e3567681a847f3b7021d7d9c829f",
+      "tree": "d5932f0fe4f60cf787f5e977c94ad8cd11f8e0d6",
+      "dirty": false
+    },
+    "strokes/candidate-2": {
+      "head": "2d8720a82e13e3567681a847f3b7021d7d9c829f",
+      "tree": "d5932f0fe4f60cf787f5e977c94ad8cd11f8e0d6",
+      "dirty": false
+    },
+    "strokes/control-2": {
+      "head": "c365717f3fd694b1d6f362ba8ab950a5f4ed9cd6",
+      "tree": "cf2813093e1d38456d1b7d385289ff7a0aa6be84",
+      "dirty": false
+    }
+  },
+  "audit": [
+    {
+      "kind": "workflow",
+      "variant": "candidate-1",
+      "allCanonicalFrameFieldsEqual": true
+    },
+    {
+      "kind": "workflow",
+      "variant": "candidate-2",
+      "allCanonicalFrameFieldsEqual": true
+    },
+    {
+      "kind": "workflow",
+      "variant": "control-2",
+      "allCanonicalFrameFieldsEqual": true
+    },
+    {
+      "kind": "strokes",
+      "variant": "candidate-1",
+      "allCanonicalFrameFieldsEqual": true
+    },
+    {
+      "kind": "strokes",
+      "variant": "candidate-2",
+      "allCanonicalFrameFieldsEqual": true
+    },
+    {
+      "kind": "strokes",
+      "variant": "control-2",
+      "allCanonicalFrameFieldsEqual": true
+    },
+    {
+      "kind": "workflow",
+      "diagnosticVsOrdinaryStableFieldsEqual": true,
+      "wrappersRestored": true
+    },
+    {
+      "kind": "strokes",
+      "diagnosticVsOrdinaryStableFieldsEqual": true,
+      "wrappersRestored": true
+    },
+    {
+      "kind": "workflow",
+      "candidateDiagnosticVsOrdinaryEqual": true,
+      "wrappersRestored": true
+    },
+    {
+      "kind": "strokes",
+      "candidateDiagnosticVsOrdinaryEqual": true,
+      "wrappersRestored": true
+    }
+  ],
+  "timings": [
+    {
+      "workload": "workflow",
+      "variant": "control-1",
+      "backend": "ecs",
+      "round": 0,
+      "samples": 20,
+      "engineMs": {
+        "p50": 17.3,
+        "p95": 87.2,
+        "total": 729.6
+      },
+      "operationToFrameMs": {
+        "p50": 18,
+        "p95": 87.4,
+        "total": 741.0
+      },
+      "inputToFrameMs": {
+        "p50": 18.1,
+        "p95": 87.4,
+        "total": 741.5
+      }
+    },
+    {
+      "workload": "workflow",
+      "variant": "control-1",
+      "backend": "ecs",
+      "round": 1,
+      "samples": 20,
+      "engineMs": {
+        "p50": 14.4,
+        "p95": 73.3,
+        "total": 488.8
+      },
+      "operationToFrameMs": {
+        "p50": 14.6,
+        "p95": 73.6,
+        "total": 495.7
+      },
+      "inputToFrameMs": {
+        "p50": 14.6,
+        "p95": 73.6,
+        "total": 495.8
+      }
+    },
+    {
+      "workload": "workflow",
+      "variant": "candidate-1",
+      "backend": "ecs",
+      "round": 0,
+      "samples": 20,
+      "engineMs": {
+        "p50": 15.5,
+        "p95": 68.2,
+        "total": 566.0
+      },
+      "operationToFrameMs": {
+        "p50": 15.6,
+        "p95": 69.5,
+        "total": 571.9
+      },
+      "inputToFrameMs": {
+        "p50": 15.6,
+        "p95": 69.7,
+        "total": 572.4
+      }
+    },
+    {
+      "workload": "workflow",
+      "variant": "candidate-1",
+      "backend": "ecs",
+      "round": 1,
+      "samples": 20,
+      "engineMs": {
+        "p50": 14.9,
+        "p95": 63.4,
+        "total": 483.4
+      },
+      "operationToFrameMs": {
+        "p50": 15.1,
+        "p95": 63.6,
+        "total": 490.0
+      },
+      "inputToFrameMs": {
+        "p50": 15.1,
+        "p95": 63.6,
+        "total": 490.3
+      }
+    },
+    {
+      "workload": "workflow",
+      "variant": "candidate-2",
+      "backend": "ecs",
+      "round": 0,
+      "samples": 20,
+      "engineMs": {
+        "p50": 15.5,
+        "p95": 76.2,
+        "total": 683.2
+      },
+      "operationToFrameMs": {
+        "p50": 16,
+        "p95": 76.4,
+        "total": 689.3
+      },
+      "inputToFrameMs": {
+        "p50": 16,
+        "p95": 76.4,
+        "total": 690.2
+      }
+    },
+    {
+      "workload": "workflow",
+      "variant": "candidate-2",
+      "backend": "ecs",
+      "round": 1,
+      "samples": 20,
+      "engineMs": {
+        "p50": 16.9,
+        "p95": 64.1,
+        "total": 520.3
+      },
+      "operationToFrameMs": {
+        "p50": 17.5,
+        "p95": 64.3,
+        "total": 525.1
+      },
+      "inputToFrameMs": {
+        "p50": 17.5,
+        "p95": 64.3,
+        "total": 525.8
+      }
+    },
+    {
+      "workload": "workflow",
+      "variant": "control-2",
+      "backend": "ecs",
+      "round": 0,
+      "samples": 20,
+      "engineMs": {
+        "p50": 14.6,
+        "p95": 71.7,
+        "total": 672.5
+      },
+      "operationToFrameMs": {
+        "p50": 14.8,
+        "p95": 71.9,
+        "total": 677.8
+      },
+      "inputToFrameMs": {
+        "p50": 14.8,
+        "p95": 71.9,
+        "total": 678.6
+      }
+    },
+    {
+      "workload": "workflow",
+      "variant": "control-2",
+      "backend": "ecs",
+      "round": 1,
+      "samples": 20,
+      "engineMs": {
+        "p50": 14.6,
+        "p95": 45.6,
+        "total": 443.5
+      },
+      "operationToFrameMs": {
+        "p50": 15,
+        "p95": 45.7,
+        "total": 450.0
+      },
+      "inputToFrameMs": {
+        "p50": 15,
+        "p95": 45.7,
+        "total": 450.4
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "control-1",
+      "backend": "core",
+      "round": 0,
+      "samples": 12,
+      "engineMs": {
+        "p50": 3.9,
+        "p95": 52.1,
+        "total": 128.5
+      },
+      "operationToFrameMs": {
+        "p50": 3.9,
+        "p95": 52.2,
+        "total": 128.6
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "control-1",
+      "backend": "core",
+      "round": 1,
+      "samples": 12,
+      "engineMs": {
+        "p50": 3.9,
+        "p95": 11.8,
+        "total": 55.7
+      },
+      "operationToFrameMs": {
+        "p50": 3.9,
+        "p95": 11.8,
+        "total": 55.8
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "control-1",
+      "backend": "ecs",
+      "round": 0,
+      "samples": 12,
+      "engineMs": {
+        "p50": 11.4,
+        "p95": 121.2,
+        "total": 405.9
+      },
+      "operationToFrameMs": {
+        "p50": 17.8,
+        "p95": 133,
+        "total": 483.3
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "control-1",
+      "backend": "ecs",
+      "round": 1,
+      "samples": 12,
+      "engineMs": {
+        "p50": 13.2,
+        "p95": 46,
+        "total": 197.3
+      },
+      "operationToFrameMs": {
+        "p50": 17,
+        "p95": 61.2,
+        "total": 298.1
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "candidate-1",
+      "backend": "core",
+      "round": 0,
+      "samples": 12,
+      "engineMs": {
+        "p50": 6.7,
+        "p95": 70.1,
+        "total": 206.5
+      },
+      "operationToFrameMs": {
+        "p50": 6.7,
+        "p95": 70.1,
+        "total": 206.5
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "candidate-1",
+      "backend": "core",
+      "round": 1,
+      "samples": 12,
+      "engineMs": {
+        "p50": 3.9,
+        "p95": 22.5,
+        "total": 75.4
+      },
+      "operationToFrameMs": {
+        "p50": 3.9,
+        "p95": 22.5,
+        "total": 75.5
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "candidate-1",
+      "backend": "ecs",
+      "round": 0,
+      "samples": 12,
+      "engineMs": {
+        "p50": 8.2,
+        "p95": 55.8,
+        "total": 236.6
+      },
+      "operationToFrameMs": {
+        "p50": 19.8,
+        "p95": 60.3,
+        "total": 336.3
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "candidate-1",
+      "backend": "ecs",
+      "round": 1,
+      "samples": 12,
+      "engineMs": {
+        "p50": 10.7,
+        "p95": 48.8,
+        "total": 206.1
+      },
+      "operationToFrameMs": {
+        "p50": 18.5,
+        "p95": 64.2,
+        "total": 332.5
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "candidate-2",
+      "backend": "core",
+      "round": 0,
+      "samples": 12,
+      "engineMs": {
+        "p50": 4.7,
+        "p95": 48.1,
+        "total": 149.5
+      },
+      "operationToFrameMs": {
+        "p50": 4.7,
+        "p95": 48.1,
+        "total": 149.5
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "candidate-2",
+      "backend": "core",
+      "round": 1,
+      "samples": 12,
+      "engineMs": {
+        "p50": 5.3,
+        "p95": 21.9,
+        "total": 76.5
+      },
+      "operationToFrameMs": {
+        "p50": 5.3,
+        "p95": 21.9,
+        "total": 76.5
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "candidate-2",
+      "backend": "ecs",
+      "round": 0,
+      "samples": 12,
+      "engineMs": {
+        "p50": 9.2,
+        "p95": 82,
+        "total": 289.0
+      },
+      "operationToFrameMs": {
+        "p50": 19.9,
+        "p95": 86.3,
+        "total": 365.2
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "candidate-2",
+      "backend": "ecs",
+      "round": 1,
+      "samples": 12,
+      "engineMs": {
+        "p50": 13,
+        "p95": 73.2,
+        "total": 274.7
+      },
+      "operationToFrameMs": {
+        "p50": 18.8,
+        "p95": 80.7,
+        "total": 350.3
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "control-2",
+      "backend": "core",
+      "round": 0,
+      "samples": 12,
+      "engineMs": {
+        "p50": 5.6,
+        "p95": 56.1,
+        "total": 161.8
+      },
+      "operationToFrameMs": {
+        "p50": 5.6,
+        "p95": 56.1,
+        "total": 161.8
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "control-2",
+      "backend": "core",
+      "round": 1,
+      "samples": 12,
+      "engineMs": {
+        "p50": 4.2,
+        "p95": 16,
+        "total": 69.4
+      },
+      "operationToFrameMs": {
+        "p50": 4.2,
+        "p95": 16,
+        "total": 69.5
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "control-2",
+      "backend": "ecs",
+      "round": 0,
+      "samples": 12,
+      "engineMs": {
+        "p50": 11.9,
+        "p95": 64.7,
+        "total": 297.5
+      },
+      "operationToFrameMs": {
+        "p50": 24.8,
+        "p95": 66.5,
+        "total": 395.0
+      }
+    },
+    {
+      "workload": "strokes",
+      "variant": "control-2",
+      "backend": "ecs",
+      "round": 1,
+      "samples": 12,
+      "engineMs": {
+        "p50": 12.3,
+        "p95": 65.9,
+        "total": 224.6
+      },
+      "operationToFrameMs": {
+        "p50": 17.7,
+        "p95": 76.6,
+        "total": 304.8
+      }
+    }
+  ],
+  "resources": [],
+  "counters": [
+    {
+      "cohort": "control",
+      "workload": "workflow",
+      "backend": "ecs",
+      "round": 0,
+      "totals": {
+        "plans": 40,
+        "addCalls": 4729,
+        "removeCalls": 4729,
+        "attempts": 30211,
+        "first": 4729,
+        "marked": 0,
+        "dirty": 0,
+        "clean": 25482,
+        "cleanEqual": 25482,
+        "cleanChanged": 0,
+        "geometryOnlyEqual": 0
+      },
+      "families": {
+        "StrokeBatch": {
+          "attempts": 14992,
+          "first": 2364,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 12628,
+          "cleanEqual": 12628,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        },
+        "ImageBatch": {
+          "attempts": 15218,
+          "first": 2364,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 12854,
+          "cleanEqual": 12854,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        },
+        "SDF": {
+          "attempts": 1,
+          "first": 1,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 0,
+          "cleanEqual": 0,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        }
+      },
+      "queryOverlap": {
+        "culleds.removed": 4729
+      }
+    },
+    {
+      "cohort": "control",
+      "workload": "workflow",
+      "backend": "ecs",
+      "round": 1,
+      "totals": {
+        "plans": 40,
+        "addCalls": 4729,
+        "removeCalls": 4729,
+        "attempts": 30211,
+        "first": 4729,
+        "marked": 0,
+        "dirty": 0,
+        "clean": 25482,
+        "cleanEqual": 25482,
+        "cleanChanged": 0,
+        "geometryOnlyEqual": 0
+      },
+      "families": {
+        "StrokeBatch": {
+          "attempts": 14992,
+          "first": 2364,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 12628,
+          "cleanEqual": 12628,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        },
+        "ImageBatch": {
+          "attempts": 15218,
+          "first": 2364,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 12854,
+          "cleanEqual": 12854,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        },
+        "SDF": {
+          "attempts": 1,
+          "first": 1,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 0,
+          "cleanEqual": 0,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        }
+      },
+      "queryOverlap": {
+        "culleds.removed": 4729
+      }
+    },
+    {
+      "cohort": "control",
+      "workload": "strokes",
+      "backend": "core",
+      "round": 0,
+      "totals": {
+        "plans": 9,
+        "addCalls": 10796,
+        "removeCalls": 10804,
+        "attempts": 8396,
+        "first": 4816,
+        "marked": 0,
+        "dirty": 0,
+        "clean": 3580,
+        "cleanEqual": 3580,
+        "cleanChanged": 0,
+        "geometryOnlyEqual": 0
+      },
+      "families": {
+        "stroke-key": {
+          "attempts": 8396,
+          "first": 4816,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 3580,
+          "cleanEqual": 3580,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        }
+      },
+      "queryOverlap": {}
+    },
+    {
+      "cohort": "control",
+      "workload": "strokes",
+      "backend": "core",
+      "round": 1,
+      "totals": {
+        "plans": 9,
+        "addCalls": 10796,
+        "removeCalls": 10804,
+        "attempts": 8396,
+        "first": 4816,
+        "marked": 0,
+        "dirty": 0,
+        "clean": 3580,
+        "cleanEqual": 3580,
+        "cleanChanged": 0,
+        "geometryOnlyEqual": 0
+      },
+      "families": {
+        "stroke-key": {
+          "attempts": 8396,
+          "first": 4816,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 3580,
+          "cleanEqual": 3580,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        }
+      },
+      "queryOverlap": {}
+    },
+    {
+      "cohort": "control",
+      "workload": "strokes",
+      "backend": "ecs",
+      "round": 0,
+      "totals": {
+        "plans": 18,
+        "addCalls": 4816,
+        "removeCalls": 4816,
+        "attempts": 8396,
+        "first": 4816,
+        "marked": 0,
+        "dirty": 0,
+        "clean": 3580,
+        "cleanEqual": 3580,
+        "cleanChanged": 0,
+        "geometryOnlyEqual": 0
+      },
+      "families": {
+        "StrokeBatch": {
+          "attempts": 8396,
+          "first": 4816,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 3580,
+          "cleanEqual": 3580,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        }
+      },
+      "queryOverlap": {
+        "culleds.removed": 4816
+      }
+    },
+    {
+      "cohort": "control",
+      "workload": "strokes",
+      "backend": "ecs",
+      "round": 1,
+      "totals": {
+        "plans": 18,
+        "addCalls": 4816,
+        "removeCalls": 4816,
+        "attempts": 8396,
+        "first": 4816,
+        "marked": 0,
+        "dirty": 0,
+        "clean": 3580,
+        "cleanEqual": 3580,
+        "cleanChanged": 0,
+        "geometryOnlyEqual": 0
+      },
+      "families": {
+        "StrokeBatch": {
+          "attempts": 8396,
+          "first": 4816,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 3580,
+          "cleanEqual": 3580,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        }
+      },
+      "queryOverlap": {
+        "culleds.removed": 4816
+      }
+    },
+    {
+      "cohort": "rejectedCandidate",
+      "workload": "workflow",
+      "backend": "ecs",
+      "round": 0,
+      "totals": {
+        "plans": 40,
+        "addCalls": 4729,
+        "removeCalls": 4729,
+        "attempts": 17583,
+        "first": 4729,
+        "marked": 0,
+        "dirty": 0,
+        "clean": 12854,
+        "cleanEqual": 12854,
+        "cleanChanged": 0,
+        "geometryOnlyEqual": 0
+      },
+      "families": {
+        "ImageBatch": {
+          "attempts": 15218,
+          "first": 2364,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 12854,
+          "cleanEqual": 12854,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        },
+        "StrokeBatch": {
+          "attempts": 2364,
+          "first": 2364,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 0,
+          "cleanEqual": 0,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        },
+        "SDF": {
+          "attempts": 1,
+          "first": 1,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 0,
+          "cleanEqual": 0,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        }
+      },
+      "queryOverlap": {
+        "culleds.removed": 4729
+      }
+    },
+    {
+      "cohort": "rejectedCandidate",
+      "workload": "workflow",
+      "backend": "ecs",
+      "round": 1,
+      "totals": {
+        "plans": 40,
+        "addCalls": 4729,
+        "removeCalls": 4729,
+        "attempts": 17583,
+        "first": 4729,
+        "marked": 0,
+        "dirty": 0,
+        "clean": 12854,
+        "cleanEqual": 12854,
+        "cleanChanged": 0,
+        "geometryOnlyEqual": 0
+      },
+      "families": {
+        "ImageBatch": {
+          "attempts": 15218,
+          "first": 2364,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 12854,
+          "cleanEqual": 12854,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        },
+        "StrokeBatch": {
+          "attempts": 2364,
+          "first": 2364,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 0,
+          "cleanEqual": 0,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        },
+        "SDF": {
+          "attempts": 1,
+          "first": 1,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 0,
+          "cleanEqual": 0,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        }
+      },
+      "queryOverlap": {
+        "culleds.removed": 4729
+      }
+    },
+    {
+      "cohort": "rejectedCandidate",
+      "workload": "strokes",
+      "backend": "core",
+      "round": 0,
+      "totals": {
+        "plans": 9,
+        "addCalls": 10796,
+        "removeCalls": 10804,
+        "attempts": 8396,
+        "first": 4816,
+        "marked": 0,
+        "dirty": 0,
+        "clean": 3580,
+        "cleanEqual": 3580,
+        "cleanChanged": 0,
+        "geometryOnlyEqual": 0
+      },
+      "families": {
+        "stroke-key": {
+          "attempts": 8396,
+          "first": 4816,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 3580,
+          "cleanEqual": 3580,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        }
+      },
+      "queryOverlap": {}
+    },
+    {
+      "cohort": "rejectedCandidate",
+      "workload": "strokes",
+      "backend": "core",
+      "round": 1,
+      "totals": {
+        "plans": 9,
+        "addCalls": 10796,
+        "removeCalls": 10804,
+        "attempts": 8396,
+        "first": 4816,
+        "marked": 0,
+        "dirty": 0,
+        "clean": 3580,
+        "cleanEqual": 3580,
+        "cleanChanged": 0,
+        "geometryOnlyEqual": 0
+      },
+      "families": {
+        "stroke-key": {
+          "attempts": 8396,
+          "first": 4816,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 3580,
+          "cleanEqual": 3580,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        }
+      },
+      "queryOverlap": {}
+    },
+    {
+      "cohort": "rejectedCandidate",
+      "workload": "strokes",
+      "backend": "ecs",
+      "round": 0,
+      "totals": {
+        "plans": 18,
+        "addCalls": 4816,
+        "removeCalls": 4816,
+        "attempts": 4816,
+        "first": 4816,
+        "marked": 0,
+        "dirty": 0,
+        "clean": 0,
+        "cleanEqual": 0,
+        "cleanChanged": 0,
+        "geometryOnlyEqual": 0
+      },
+      "families": {
+        "StrokeBatch": {
+          "attempts": 4816,
+          "first": 4816,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 0,
+          "cleanEqual": 0,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        }
+      },
+      "queryOverlap": {
+        "culleds.removed": 4816
+      }
+    },
+    {
+      "cohort": "rejectedCandidate",
+      "workload": "strokes",
+      "backend": "ecs",
+      "round": 1,
+      "totals": {
+        "plans": 18,
+        "addCalls": 4816,
+        "removeCalls": 4816,
+        "attempts": 4816,
+        "first": 4816,
+        "marked": 0,
+        "dirty": 0,
+        "clean": 0,
+        "cleanEqual": 0,
+        "cleanChanged": 0,
+        "geometryOnlyEqual": 0
+      },
+      "families": {
+        "StrokeBatch": {
+          "attempts": 4816,
+          "first": 4816,
+          "marked": 0,
+          "dirty": 0,
+          "clean": 0,
+          "cleanEqual": 0,
+          "cleanChanged": 0,
+          "geometryOnlyEqual": 0
+        }
+      },
+      "queryOverlap": {
+        "culleds.removed": 4816
+      }
+    }
+  ],
+  "resourceWork": [
+    {
+      "workload": "workflow",
+      "backend": "ecs",
+      "round": 0,
+      "native": {
+        "bufferCreates": {
+          "min": 2,
+          "max": 27,
+          "total": 177
+        },
+        "bufferDeletes": {
+          "min": 2,
+          "max": 26,
+          "total": 177
+        },
+        "bufferAllocations": {
+          "min": 2,
+          "max": 27,
+          "total": 177
+        },
+        "drawcalls": {
+          "min": 3,
+          "max": 22,
+          "total": 159
+        },
+        "indices": {
+          "min": 15516,
+          "max": 633846,
+          "total": 4194504
+        },
+        "arrayVertices": {
+          "min": 4,
+          "max": 4,
+          "total": 80
+        },
+        "bufferUploads": {
+          "min": 5,
+          "max": 44,
+          "total": 326
+        },
+        "bufferBytes": {
+          "min": 76640,
+          "max": 3177080,
+          "total": 21113128
+        },
+        "uniformUploads": {
+          "min": 2,
+          "max": 11,
+          "total": 89
+        },
+        "uniformBytes": {
+          "min": 320,
+          "max": 1472,
+          "total": 12672
+        }
+      },
+      "visible": {
+        "cards": [36, 2400],
+        "edges": [36, 2400],
+        "other": [0, 1]
+      },
+      "cpuCalls": null
+    },
+    {
+      "workload": "workflow",
+      "backend": "ecs",
+      "round": 1,
+      "native": {
+        "bufferCreates": {
+          "min": 2,
+          "max": 27,
+          "total": 177
+        },
+        "bufferDeletes": {
+          "min": 2,
+          "max": 26,
+          "total": 177
+        },
+        "bufferAllocations": {
+          "min": 2,
+          "max": 27,
+          "total": 177
+        },
+        "drawcalls": {
+          "min": 3,
+          "max": 22,
+          "total": 159
+        },
+        "indices": {
+          "min": 15516,
+          "max": 633846,
+          "total": 4201764
+        },
+        "arrayVertices": {
+          "min": 4,
+          "max": 4,
+          "total": 80
+        },
+        "bufferUploads": {
+          "min": 5,
+          "max": 44,
+          "total": 326
+        },
+        "bufferBytes": {
+          "min": 76640,
+          "max": 3177080,
+          "total": 21147976
+        },
+        "uniformUploads": {
+          "min": 2,
+          "max": 11,
+          "total": 89
+        },
+        "uniformBytes": {
+          "min": 320,
+          "max": 1472,
+          "total": 12672
+        }
+      },
+      "visible": {
+        "cards": [36, 2400],
+        "edges": [36, 2400],
+        "other": [0, 1]
+      },
+      "cpuCalls": null
+    },
+    {
+      "workload": "strokes",
+      "backend": "core",
+      "round": 0,
+      "native": {
+        "bufferCreates": {
+          "min": 0,
+          "max": 32,
+          "total": 95
+        },
+        "bufferDeletes": {
+          "min": 0,
+          "max": 32,
+          "total": 95
+        },
+        "bufferAllocations": {
+          "min": 0,
+          "max": 32,
+          "total": 95
+        },
+        "drawcalls": {
+          "min": 0,
+          "max": 11,
+          "total": 57
+        },
+        "indices": {
+          "min": 0,
+          "max": 999000,
+          "total": 4562115
+        },
+        "arrayVertices": {
+          "min": 0,
+          "max": 4,
+          "total": 36
+        },
+        "bufferUploads": {
+          "min": 0,
+          "max": 33,
+          "total": 125
+        },
+        "bufferBytes": {
+          "min": 0,
+          "max": 4263808,
+          "total": 15208704
+        },
+        "uniformUploads": {
+          "min": 0,
+          "max": 11,
+          "total": 47
+        },
+        "uniformBytes": {
+          "min": 0,
+          "max": 1312,
+          "total": 5984
+        },
+        "arrayBufferBinds": {
+          "min": 0,
+          "max": 102,
+          "total": 470
+        },
+        "elementBufferBinds": {
+          "min": 0,
+          "max": 11,
+          "total": 49
+        },
+        "vertexAttribPointers": {
+          "min": 0,
+          "max": 81,
+          "total": 393
+        }
+      },
+      "visible": [0, 2400],
+      "cpuCalls": {
+        "precisionCalls": 48,
+        "geometryCalls": 38
+      }
+    },
+    {
+      "workload": "strokes",
+      "backend": "core",
+      "round": 1,
+      "native": {
+        "bufferCreates": {
+          "min": 0,
+          "max": 32,
+          "total": 95
+        },
+        "bufferDeletes": {
+          "min": 0,
+          "max": 32,
+          "total": 95
+        },
+        "bufferAllocations": {
+          "min": 0,
+          "max": 32,
+          "total": 95
+        },
+        "drawcalls": {
+          "min": 0,
+          "max": 11,
+          "total": 57
+        },
+        "indices": {
+          "min": 0,
+          "max": 999000,
+          "total": 4562115
+        },
+        "arrayVertices": {
+          "min": 0,
+          "max": 4,
+          "total": 36
+        },
+        "bufferUploads": {
+          "min": 0,
+          "max": 33,
+          "total": 125
+        },
+        "bufferBytes": {
+          "min": 0,
+          "max": 4263808,
+          "total": 15208704
+        },
+        "uniformUploads": {
+          "min": 0,
+          "max": 11,
+          "total": 47
+        },
+        "uniformBytes": {
+          "min": 0,
+          "max": 1312,
+          "total": 5984
+        },
+        "arrayBufferBinds": {
+          "min": 0,
+          "max": 102,
+          "total": 470
+        },
+        "elementBufferBinds": {
+          "min": 0,
+          "max": 11,
+          "total": 49
+        },
+        "vertexAttribPointers": {
+          "min": 0,
+          "max": 81,
+          "total": 393
+        }
+      },
+      "visible": [0, 2400],
+      "cpuCalls": {
+        "precisionCalls": 48,
+        "geometryCalls": 38
+      }
+    },
+    {
+      "workload": "strokes",
+      "backend": "ecs",
+      "round": 0,
+      "native": {
+        "bufferCreates": {
+          "min": 0,
+          "max": 32,
+          "total": 95
+        },
+        "bufferDeletes": {
+          "min": 0,
+          "max": 32,
+          "total": 95
+        },
+        "bufferAllocations": {
+          "min": 0,
+          "max": 32,
+          "total": 95
+        },
+        "drawcalls": {
+          "min": 0,
+          "max": 11,
+          "total": 57
+        },
+        "indices": {
+          "min": 0,
+          "max": 999000,
+          "total": 4562115
+        },
+        "arrayVertices": {
+          "min": 0,
+          "max": 4,
+          "total": 36
+        },
+        "bufferUploads": {
+          "min": 0,
+          "max": 33,
+          "total": 116
+        },
+        "bufferBytes": {
+          "min": 0,
+          "max": 4796768,
+          "total": 17108488
+        },
+        "uniformUploads": {
+          "min": 0,
+          "max": 11,
+          "total": 38
+        },
+        "uniformBytes": {
+          "min": 0,
+          "max": 1472,
+          "total": 5440
+        },
+        "arrayBufferBinds": {
+          "min": 0,
+          "max": 102,
+          "total": 470
+        },
+        "elementBufferBinds": {
+          "min": 0,
+          "max": 11,
+          "total": 49
+        },
+        "vertexAttribPointers": {
+          "min": 0,
+          "max": 81,
+          "total": 393
+        }
+      },
+      "visible": [0, 2400],
+      "cpuCalls": {
+        "precisionCalls": 48,
+        "geometryCalls": 38
+      }
+    },
+    {
+      "workload": "strokes",
+      "backend": "ecs",
+      "round": 1,
+      "native": {
+        "bufferCreates": {
+          "min": 0,
+          "max": 32,
+          "total": 95
+        },
+        "bufferDeletes": {
+          "min": 0,
+          "max": 32,
+          "total": 95
+        },
+        "bufferAllocations": {
+          "min": 0,
+          "max": 32,
+          "total": 95
+        },
+        "drawcalls": {
+          "min": 0,
+          "max": 11,
+          "total": 57
+        },
+        "indices": {
+          "min": 0,
+          "max": 999000,
+          "total": 4562115
+        },
+        "arrayVertices": {
+          "min": 0,
+          "max": 4,
+          "total": 36
+        },
+        "bufferUploads": {
+          "min": 0,
+          "max": 33,
+          "total": 116
+        },
+        "bufferBytes": {
+          "min": 0,
+          "max": 4796768,
+          "total": 17108488
+        },
+        "uniformUploads": {
+          "min": 0,
+          "max": 11,
+          "total": 38
+        },
+        "uniformBytes": {
+          "min": 0,
+          "max": 1472,
+          "total": 5440
+        },
+        "arrayBufferBinds": {
+          "min": 0,
+          "max": 102,
+          "total": 470
+        },
+        "elementBufferBinds": {
+          "min": 0,
+          "max": 11,
+          "total": 49
+        },
+        "vertexAttribPointers": {
+          "min": 0,
+          "max": 81,
+          "total": 393
+        }
+      },
+      "visible": [0, 2400],
+      "cpuCalls": {
+        "precisionCalls": 48,
+        "geometryCalls": 38
+      }
+    }
+  ],
+  "decision": "Reject the runtime candidate; retain mutable-input regression tests and measured evidence only.",
+  "countsAreDiagnosticOnly": true,
+  "control": "c365717f3fd694b1d6f362ba8ab950a5f4ed9cd6",
+  "candidate": "2d8720a82e13e3567681a847f3b7021d7d9c829f"
+}

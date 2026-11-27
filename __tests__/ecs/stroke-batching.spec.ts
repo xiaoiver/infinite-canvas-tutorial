@@ -298,3 +298,25 @@ it('preserves raw stroke material and opacity key bytes without normalizing laye
   layer.blendMode = 'normal';
   expect(StrokeBatch.batchKey(entity)).not.toBeNull();
 });
+
+it('reclassifies surviving nested paint edits when another visible member leaves', () => {
+  const batch = manager();
+  batch.setPathInstancingEnabled(true);
+  const a = path(),
+    b = path(),
+    c = path();
+  [a, b, c].forEach((n) => batch.add(n.entity));
+  expect(queued(batch).map((d) => d.shapes)).toEqual([
+    [a.entity, b.entity, c.entity],
+  ]);
+  // Nested arrays remain mutable. No component write, dirty tag or add(a)
+  // announces this edit; a dirty membership plan must still see current paint.
+  a.data.get(StrokeLayers).layers[0].value = 'red';
+  batch.remove(c.entity, false);
+  expect(queued(batch).map((d) => d.shapes)).toEqual([[a.entity], [b.entity]]);
+  a.data.get(StrokeLayers).layers[0].value = '#123456';
+  batch.add(c.entity);
+  expect(queued(batch).map((d) => d.shapes)).toEqual([
+    [a.entity, b.entity, c.entity],
+  ]);
+});
