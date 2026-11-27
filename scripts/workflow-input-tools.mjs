@@ -1,3 +1,7 @@
+import {
+  sameStrokeTextureScope,
+  qualifyStrokeTexture,
+} from './stroke-texture-bench-tools.mjs';
 import assert from 'node:assert/strict';
 import {
   cameraTraceHash,
@@ -234,6 +238,7 @@ function qualify(capture) {
       ],
     });
   }
+  qualifyStrokeTexture(capture);
 }
 function summarize(capture) {
   return capture.rounds.map((round) => {
@@ -271,6 +276,7 @@ function summarize(capture) {
 export function compareWorkflowInputs(before, after) {
   qualify(before);
   qualify(after);
+  sameStrokeTextureScope(before, after);
   for (const k of [
     'schema',
     'workload',
