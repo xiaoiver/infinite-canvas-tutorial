@@ -1,3 +1,7 @@
+import {
+  sameStrokeTextureScope,
+  qualifyStrokeTexture,
+} from './stroke-texture-bench-tools.mjs';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 export function cameraTraceHash(workload, trace, viewport) {
@@ -173,6 +177,7 @@ function rows(capture) {
     }
   }
   assert(out.size > 0, 'Missing replay results');
+  qualifyStrokeTexture(capture);
   return out;
 }
 export function summarizeReplay(capture) {
@@ -221,6 +226,7 @@ export function compareReplays(
   after,
   { requireNativeParity = false } = {},
 ) {
+  sameStrokeTextureScope(before, after);
   for (const key of ['workload', 'traceHash', 'browser', 'node', 'viewport'])
     assert.deepEqual(before[key], after[key], `Capture ${key} differs`);
   const a = rows(before),

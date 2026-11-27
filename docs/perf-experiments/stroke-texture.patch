@@ -1,0 +1,2227 @@
+diff --git a/__tests__/browser/fixtures/core-path-instances.ts b/__tests__/browser/fixtures/core-path-instances.ts
+index f8be520..d8ec291 100644
+--- a/__tests__/browser/fixtures/core-path-instances.ts
++++ b/__tests__/browser/fixtures/core-path-instances.ts
+@@ -52,6 +52,7 @@ const nativeWork = {
+ const boundBuffers = new WeakMap<object, Map<number, object | null>>();
+ const uniformBuffers = new WeakSet<object>();
+ const resetNativeWork = () => {
++  window.textureTransfers?.reset();
+   strokeCPU.reset();
+   for (const key of Object.keys(nativeWork) as (keyof typeof nativeWork)[])
+     nativeWork[key] = 0;
+@@ -152,12 +153,14 @@ element.height = 600 * dpr;
+ const canvas = await new Canvas({
+   canvas: element,
+   devicePixelRatio: dpr,
++  strokeTexture: query.get('strokeTexture') === '1',
+   checkboardStyle: CheckboardStyle.NONE,
+   themeColors: { [Theme.LIGHT]: { background: '#ffffff' } },
+ }).initialized;
+ let planned = 0,
+   instances = 0,
+-  strokePages = 0;
++  strokePages = 0,
++  strokeTexturePages = 0;
+ const flush = BatchManager.prototype.flush;
+ BatchManager.prototype.flush = function (...args) {
+   const r = flush.apply(this, args);
+@@ -172,6 +175,7 @@ PathInstances.prototype.render = function (...args) {
+ const strokeRender = StrokeBatch.prototype.render;
+ StrokeBatch.prototype.render = function (...args) {
+   strokePages++;
++  if (this.strokeTextureActive) strokeTexturePages++;
+   return strokeRender.apply(this, args);
+ };
+ const replayPhases = framePhaseProbe();
+@@ -215,6 +219,7 @@ function frame() {
+   window.vertexUploads?.reset();
+   instances = 0;
+   strokePages = 0;
++  strokeTexturePages = 0;
+   canvas.render();
+ }
+ const api = {
+@@ -230,7 +235,9 @@ const api = {
+       planned,
+       instances,
+       strokePages,
++      strokeTexturePages,
+       native: { ...nativeWork },
++      textureNative: window.textureTransfers?.snapshot(),
+       strokeCPU: strokeCPU.snapshot(),
+       resources: window.lifecycleProbes?.resources(),
+       document: shapes.map((s) => serializeNode(s)),
+@@ -365,6 +372,10 @@ const api = {
+     });
+     frame();
+   },
++  strokeTexture(value: boolean) {
++    canvas.strokeTexture = value;
++    frame();
++  },
+   enable(value: boolean) {
+     canvas.pathInstancing = value;
+     frame();
+@@ -406,7 +417,9 @@ const api = {
+       visibleIndices,
+       visible: visibleIndices.length,
+       strokePages,
++      strokeTexturePages,
+       native: { ...nativeWork },
++      textureNative: window.textureTransfers?.snapshot(),
+       cpu: strokeCPU.snapshot(),
+       phases,
+       phaseDetail: detailedPhases ? 'camera' : undefined,
+diff --git a/__tests__/browser/fixtures/polyline-lod.ts b/__tests__/browser/fixtures/polyline-lod.ts
+index 042ad8f..99fb2c5 100644
+--- a/__tests__/browser/fixtures/polyline-lod.ts
++++ b/__tests__/browser/fixtures/polyline-lod.ts
+@@ -65,14 +65,18 @@ const nativeWork = {
+ };
+ const boundBuffers = new WeakMap<object, Map<number, object | null>>();
+ const uniformBuffers = new WeakSet<object>();
+-let replayStrokePages = 0;
++let replayStrokePages = 0,
++  replayStrokeTexturePages = 0;
+ const replayStrokeRender = ReplayStrokeBatch.prototype.render;
+ ReplayStrokeBatch.prototype.render = function (...args) {
+   replayStrokePages++;
++  if (this.strokeTextureActive) replayStrokeTexturePages++;
+   return replayStrokeRender.apply(this, args);
+ };
+ const resetNativeWork = () => {
+   replayStrokePages = 0;
++  replayStrokeTexturePages = 0;
++  window.textureTransfers?.reset();
+   strokeCPU.reset();
+   for (const key of Object.keys(nativeWork) as (keyof typeof nativeWork)[])
+     nativeWork[key] = 0;
+@@ -214,7 +218,9 @@ const replay = completedCameraReplay({
+       visibleIndices,
+       visible: visibleIndices.length,
+       strokePages: replayStrokePages,
++      strokeTexturePages: replayStrokeTexturePages,
+       native: { ...nativeWork },
++      textureNative: window.textureTransfers?.snapshot(),
+       cpu: strokeCPU.snapshot(),
+       phases: capturedPhases,
+       phaseDetail: detailedPhases ? 'camera' : undefined,
+@@ -349,6 +355,10 @@ const harness = {
+     );
+     await frames();
+   },
++  async strokeTexture(enabled: boolean) {
++    api.setStrokeTextureEnabled(enabled);
++    await frames();
++  },
+   async pathInstancing(enabled: boolean) {
+     api.setPathInstancingEnabled(enabled);
+     await frames();
+@@ -517,6 +527,9 @@ const harness = {
+       drawcalls: d.length,
+       strokePages: d.filter((draw) => draw.constructor.name === 'StrokeBatch')
+         .length,
++      strokeTexturePages: d.filter(
++        (draw) => draw instanceof SmoothPolyline && draw.strokeTextureActive,
++      ).length,
+       segments: d
+         .filter((d) => d instanceof SmoothPolyline)
+         .map((d) => (d as SmoothPolyline).instanceCount),
+@@ -529,6 +542,7 @@ const harness = {
+         0,
+       ),
+       native: { ...nativeWork },
++      textureNative: window.textureTransfers?.snapshot(),
+       strokeCPU: strokeCPU.snapshot(),
+       document: api.getNodes(),
+       resources: window.lifecycleProbes?.resources(),
+diff --git a/__tests__/browser/fixtures/texture-transfer-probe.ts b/__tests__/browser/fixtures/texture-transfer-probe.ts
+new file mode 100644
+index 0000000..8ac2dbe
+--- /dev/null
++++ b/__tests__/browser/fixtures/texture-transfer-probe.ts
+@@ -0,0 +1,171 @@
++/** Native texture calls/typed source bytes; no timers or GPU queries. */
++export function installTextureTransfers() {
++  if ((window as any).textureTransfers)
++    throw new Error('Texture probe already installed');
++  let disposed = false;
++  const wrapped = new WeakMap<object, Set<string>>();
++  const empty = () => ({
++    creates: 0,
++    deletes: 0,
++    uploads: 0,
++    typedBytes: 0,
++    domUploads: 0,
++    offsetUploads: 0,
++    rgba32fBytesPeak: 0,
++  });
++  let work = empty();
++  const sizes = new Map<object, number>();
++  const states = new WeakMap<
++    object,
++    { unit: number; bindings: Map<string, object | null> }
++  >();
++  const allStates = new Set<{
++    unit: number;
++    bindings: Map<string, object | null>;
++  }>();
++  const undo: (() => void)[] = [];
++  const live = () => [...sizes.values()].reduce((n, v) => n + v, 0);
++  const state = (gl: any) => {
++    let s = states.get(gl);
++    if (!s) {
++      s = { unit: gl.TEXTURE0, bindings: new Map() };
++      states.set(gl, s);
++      allStates.add(s);
++    }
++    return s;
++  };
++  for (const proto of [
++    window.WebGLRenderingContext?.prototype,
++    window.WebGL2RenderingContext?.prototype,
++  ]) {
++    if (!proto) continue;
++    const wrap = (
++      name: string,
++      observe: (gl: any, args: any[], result: any) => void,
++    ) => {
++      let target: any = proto;
++      while (target && !Object.getOwnPropertyDescriptor(target, name))
++        target = Object.getPrototypeOf(target);
++      if (!target || typeof target[name] !== 'function') return;
++      let names = wrapped.get(target);
++      if (!names) wrapped.set(target, (names = new Set()));
++      if (names.has(name)) return;
++      names.add(name);
++      const original = target[name];
++      const descriptor = Object.getOwnPropertyDescriptor(target, name);
++      Object.defineProperty(target, name, {
++        configurable: true,
++        writable: true,
++        value: function (...args: any[]) {
++          const result = original.apply(this, args);
++          if (!disposed) observe(this, args, result);
++          return result;
++        },
++      });
++      undo.push(() => {
++        if (descriptor) Object.defineProperty(target, name, descriptor);
++        else delete target[name];
++      });
++    };
++    wrap('createTexture', () => work.creates++);
++    wrap('deleteTexture', (_gl, [texture]) => {
++      work.deletes++;
++      sizes.delete(texture);
++      for (const s of allStates)
++        for (const [k, v] of s.bindings)
++          if (v === texture) s.bindings.set(k, null);
++    });
++    wrap('activeTexture', (gl, [unit]) => {
++      state(gl).unit = unit;
++    });
++    wrap('bindTexture', (gl, [target, texture]) => {
++      const s = state(gl);
++      s.bindings.set(`${s.unit}:${target}`, texture);
++    });
++    const storage = (
++      gl: any,
++      target: number,
++      format: number,
++      width: number,
++      height: number,
++      levels: number,
++    ) => {
++      const s = state(gl),
++        t = s.bindings.get(`${s.unit}:${target}`);
++      if (!t || target !== gl.TEXTURE_2D) return;
++      if (format === gl.RGBA32F) {
++        let bytes = 0;
++        for (let l = 0; l < levels; l++)
++          bytes += Math.max(1, width >> l) * Math.max(1, height >> l) * 16;
++        sizes.set(t, bytes);
++      } else sizes.delete(t);
++      work.rgba32fBytesPeak = Math.max(work.rgba32fBytesPeak, live());
++    };
++    wrap('texStorage2D', (gl, [target, levels, format, width, height]) =>
++      storage(gl, target, format, width, height, levels),
++    );
++    const upload = (args: any[]) => {
++      const source = args.length >= 9 ? args[8] : args.at(-1);
++      if (source == null) return;
++      work.uploads++;
++      if (ArrayBuffer.isView(source)) {
++        if (args.length >= 10 && args[9]) work.offsetUploads++;
++        else work.typedBytes += source.byteLength;
++      } else if (typeof source === 'number') work.offsetUploads++;
++      else work.domUploads++;
++    };
++    wrap('texImage2D', (gl, args) => {
++      if (args.length >= 9 && args[1] === 0)
++        storage(
++          gl,
++          args[0],
++          args[2] === gl.RGBA && args[7] === gl.FLOAT ? gl.RGBA32F : args[2],
++          args[3],
++          args[4],
++          1,
++        );
++      upload(args);
++    });
++    wrap('texSubImage2D', (_gl, args) => upload(args));
++  }
++  const probe = {
++    reset() {
++      work = empty();
++      work.rgba32fBytesPeak = live();
++    },
++    snapshot() {
++      return { ...work, rgba32fBytesLive: live() };
++    },
++    dispose() {
++      disposed = true;
++      undo
++        .splice(0)
++        .reverse()
++        .forEach((f) => f());
++      sizes.clear();
++      for (const s of allStates) s.bindings.clear();
++      allStates.clear();
++      delete (window as any).textureTransfers;
++      return true;
++    },
++  };
++  (window as any).textureTransfers = probe;
++}
++declare global {
++  interface Window {
++    textureTransfers?: {
++      reset(): void;
++      snapshot(): {
++        creates: number;
++        deletes: number;
++        uploads: number;
++        typedBytes: number;
++        domUploads: number;
++        offsetUploads: number;
++        rgba32fBytesPeak: number;
++        rgba32fBytesLive: number;
++      };
++      dispose(): boolean;
++    };
++  }
++}
+diff --git a/__tests__/browser/stroke-batching.spec.ts b/__tests__/browser/stroke-batching.spec.ts
+index d1913ca..6a3bc63 100644
+--- a/__tests__/browser/stroke-batching.spec.ts
++++ b/__tests__/browser/stroke-batching.spec.ts
+@@ -133,6 +133,62 @@ for (const backend of ['core', 'ecs'] as const) {
+         ).toEqual([]);
+       expect(errors).toEqual([]);
+     });
++    test('experimental texture pages retain moved pixels and return to packed rendering', async ({
++      page,
++    }) => {
++      await scene(page, backend, 300);
++      await enable(page, backend, true);
++      const packed = await state(page, backend);
++      const reference = await page.locator('canvas').screenshot();
++      const switchTexture = async (value: boolean) => {
++        await page.evaluate(
++          async ({ backend, value }) => {
++            if (backend === 'core')
++              window.corePathInstances.strokeTexture(value);
++            else {
++              await window.polylineLOD.strokeTexture(value);
++              await window.polylineLOD.camera(0.001);
++              window.polylineLOD.resetWork();
++              await window.polylineLOD.camera(0);
++            }
++          },
++          { backend, value },
++        );
++      };
++      await switchTexture(true);
++      const textured = await state(page, backend);
++      expect(textured.strokeTexturePages).toBe(2);
++      expect(textured.document).toEqual(packed.document);
++      expect(textured.native.indices).toBe(packed.native.indices);
++      expect(textured.native.drawcalls).toBe(packed.native.drawcalls);
++      compare(await page.locator('canvas').screenshot(), reference);
++      await page.evaluate(async (b) => {
++        if (b === 'core') window.corePathInstances.translate(0, 21);
++        else {
++          window.polylineLOD.resetWork();
++          await window.polylineLOD.patch({ x: 21 });
++        }
++      }, backend);
++      const moved = await page.locator('canvas').screenshot();
++      await switchTexture(false);
++      expect((await state(page, backend)).strokeTexturePages).toBe(0);
++      compare(await page.locator('canvas').screenshot(), moved);
++      await switchTexture(true);
++      compare(await page.locator('canvas').screenshot(), moved);
++      for (const zoom of [1.5, 0.75, 1.5, 0.75]) {
++        await page.evaluate(
++          async ({ backend, zoom }) => {
++            if (backend === 'core') window.corePathInstances.camera(0, zoom);
++            else await window.polylineLOD.zoom(zoom);
++          },
++          { backend, zoom },
++        );
++        const on = await page.locator('canvas').screenshot();
++        await switchTexture(false);
++        compare(await page.locator('canvas').screenshot(), on);
++        await switchTexture(true);
++      }
++    });
+     test('default off; 300 different curves retain pixels and segments in two ordered pages', async ({
+       page,
+     }) => {
+diff --git a/__tests__/contracts/stroke-texture.ts b/__tests__/contracts/stroke-texture.ts
+new file mode 100644
+index 0000000..71439aa
+--- /dev/null
++++ b/__tests__/contracts/stroke-texture.ts
+@@ -0,0 +1,199 @@
++/** Independent decoding and ownership contract for both backend implementations. */
++export function strokeTextureContract(
++  pack: any,
++  Page: any,
++  supports: any,
++  legacy: any,
++) {
++  const parts = () => [
++    {
++      points: [-0, 0, 0, 1, 2, 4, 3, 4, 8, 5, 6, 16, 7, 8, 20],
++      travel: [1, 2, 3, 4, 5, 6],
++      translationAndOrder: [20, 30, 4],
++    },
++    {
++      points: [10, 10, 0, 11, 12, 12, 13, 14, 8, 15, 16, 16],
++      travel: [7, 8, 9],
++      translationAndOrder: [40, 50, 6],
++    },
++  ];
++  it.each([1, 3])(
++    'decodes exact Float32 geometry, travel and placement without joining owners, stride=%s',
++    (stride) => {
++      const p = parts(),
++        a = pack(p, stride),
++        b = legacy(p, stride),
++        decoded: number[] = [],
++        travel: number[] = [];
++      for (let row = 0; row < a.rows; row++) {
++        const offset = a.instances[row * a.instanceStride];
++        for (let point = 0; point < 4; point++)
++          for (let c = 0; c < 3; c++)
++            decoded.push(a.geometry[(offset + point) * 4 + c]);
++        decoded.push(
++          ...a.instances.slice(
++            row * a.instanceStride + 1,
++            row * a.instanceStride + 4,
++          ),
++        );
++        travel.push(
++          ...a.instances.slice(
++            row * a.instanceStride + 4,
++            row * a.instanceStride + 4 + stride,
++          ),
++        );
++      }
++      expect(new Uint32Array(new Float32Array(decoded).buffer)).toEqual(
++        new Uint32Array(b.points.buffer),
++      );
++      expect(new Uint32Array(new Float32Array(travel).buffer)).toEqual(
++        new Uint32Array(b.travel.buffer),
++      );
++    },
++  );
++  it('falls back before allocating an oversized, empty or malformed page', () => {
++    expect(pack([], 1)).toBeUndefined();
++    expect(pack([{ ...parts()[0], points: [0, 1, 2, 3] }], 1)).toBeUndefined();
++    expect(
++      pack([{ ...parts()[0], points: Array(200001).fill(0) }], 1),
++    ).toBeUndefined();
++    const device = {
++      queryVendorInfo: () => ({ platformString: 'WebGL1' }),
++      queryTextureFormatSupported: jest.fn(),
++    };
++    expect(supports(device, pack(parts(), 1))).toBe(false);
++    expect(device.queryTextureFormatSupported).not.toHaveBeenCalled();
++  });
++  const setup = () => {
++    const resources: any[] = [];
++    const resource = (kind: string, descriptor: any) => {
++      const r: any = {
++        kind,
++        descriptor,
++        destroy: jest.fn(),
++        pixels: undefined,
++        bytes: undefined,
++      };
++      r.setImageData = jest.fn((data: any[]) => {
++        r.pixels = data[0].slice();
++      });
++      r.setSubData = jest.fn((_offset: number, bytes: Uint8Array) => {
++        r.bytes = bytes.slice();
++      });
++      resources.push(r);
++      return r;
++    };
++    const device = {
++      createBuffer: jest.fn((d: any) => resource('buffer', d)),
++      createTexture: jest.fn((d: any) => resource('texture', d)),
++      createSampler: jest.fn((d: any) => resource('sampler', d)),
++    };
++    const page = new Page(device);
++    const close = () => {
++      page.destroy();
++      page.destroy();
++      for (const r of resources) expect(r.destroy).toHaveBeenCalledTimes(1);
++    };
++    return { page, device, resources, close };
++  };
++  it('retains unchanged geometry while updating current instance placement', () => {
++    const h = setup();
++    try {
++      const p = parts();
++      h.page.update(pack(p, 3));
++      const t = h.page.texture,
++        b = h.page.buffer;
++      p[0].translationAndOrder[0] = 100;
++      const next = pack(p, 3);
++      h.page.update(next);
++      expect(h.page.texture).toBe(t);
++      expect(h.page.buffer).toBe(b);
++      expect(t.setImageData).toHaveBeenCalledTimes(1);
++      expect(b.setSubData).toHaveBeenCalledTimes(2);
++      expect(b.bytes).toEqual(new Uint8Array(next.instances.buffer));
++    } finally {
++      h.close();
++    }
++  });
++  it.each([false, true])(
++    'invalidates same-handle geometry after a partial upload failure, retry=%s',
++    (retry) => {
++      const h = setup();
++      try {
++        const p = parts();
++        h.page.update(pack(p, 1));
++        const t = h.page.texture;
++        p[0].points[3] = 99;
++        t.setImageData.mockImplementationOnce((data: any[]) => {
++          t.pixels[0] = data[0][0];
++          throw Error('partial geometry');
++        });
++        expect(() => h.page.update(pack(p, 1))).toThrow('partial geometry');
++        expect(t.destroy).not.toHaveBeenCalled();
++        if (retry) {
++          const next = pack(p, 1);
++          h.page.update(next);
++          expect(t.setImageData).toHaveBeenCalledTimes(3);
++          expect(t.pixels).toEqual(next.geometry);
++        }
++      } finally {
++        h.close();
++      }
++    },
++  );
++  it('keeps previous storage on failed growth and retries without publishing dead handles', () => {
++    const h = setup();
++    try {
++      h.page.update(pack(parts(), 1));
++      const t = h.page.texture,
++        b = h.page.buffer;
++      const p = Array.from({ length: 256 }, () => parts()[0]);
++      const next = pack(p, 1);
++      h.device.createBuffer.mockImplementationOnce(() => {
++        throw Error('instance growth');
++      });
++      expect(() => h.page.update(next)).toThrow('instance growth');
++      expect(h.page.texture).toBe(t);
++      expect(h.page.buffer).toBe(b);
++      expect(t.destroy).not.toHaveBeenCalled();
++      h.page.update(next);
++      expect(h.page.rows).toBe(next.rows);
++      expect(t.destroy).toHaveBeenCalledTimes(1);
++    } finally {
++      h.close();
++    }
++  });
++  it('shares only immutable constants and keeps live peer storage independent', () => {
++    const h = setup(),
++      peer = new Page(h.device);
++    try {
++      h.page.update(pack(parts(), 3));
++      peer.update(pack(parts(), 3));
++      expect(h.page.constants.index).toBe(peer.constants.index);
++      expect(h.page.texture).not.toBe(peer.texture);
++      h.page.destroy();
++      expect(peer.constants.index.destroy).not.toHaveBeenCalled();
++      peer.update(pack(parts(), 3));
++      peer.destroy();
++    } finally {
++      peer.destroy();
++      h.close();
++    }
++  });
++  it('releases constants if sampler allocation fails before a page is constructed', () => {
++    const resources: any[] = [];
++    const device = {
++      createBuffer: () => {
++        const r = { destroy: jest.fn() };
++        resources.push(r);
++        return r;
++      },
++      createSampler: () => {
++        throw Error('sampler allocation');
++      },
++    };
++    expect(() => new Page(device)).toThrow('sampler allocation');
++    expect(resources).toHaveLength(2);
++    for (const r of resources) expect(r.destroy).toHaveBeenCalledTimes(1);
++  });
++}
+diff --git a/__tests__/ecs/stroke-texture.spec.ts b/__tests__/ecs/stroke-texture.spec.ts
+new file mode 100644
+index 0000000..25b12e7
+--- /dev/null
++++ b/__tests__/ecs/stroke-texture.spec.ts
+@@ -0,0 +1,14 @@
++import {
++  packStrokeTexture,
++  StrokeTexturePage,
++  supportsStrokeTexture,
++} from '../../packages/ecs/src/utils/stroke-texture';
++import { packStrokeInstances } from '../../packages/ecs/src/utils/stroke-batching';
++import { strokeTextureContract } from '../contracts/stroke-texture';
++describe('ECS stroke texture page', () =>
++  strokeTextureContract(
++    packStrokeTexture,
++    StrokeTexturePage,
++    supportsStrokeTexture,
++    packStrokeInstances,
++  ));
+diff --git a/__tests__/tooling/stroke-texture.test.mjs b/__tests__/tooling/stroke-texture.test.mjs
+new file mode 100644
+index 0000000..558de17
+--- /dev/null
++++ b/__tests__/tooling/stroke-texture.test.mjs
+@@ -0,0 +1,68 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { strokeTextureMode } from '../../scripts/stroke-texture-bench-tools.mjs';
++test('texture comparison has explicit controls and rejects mixed diagnostic scopes', () => {
++  assert.equal(strokeTextureMode({}), undefined);
++  assert.equal(strokeTextureMode({ STROKE_TEXTURE_BENCH: '0' }), false);
++  assert.equal(strokeTextureMode({ STROKE_TEXTURE_BENCH: '1' }), true);
++  for (const v of ['', 'true', '2'])
++    assert.throws(() => strokeTextureMode({ STROKE_TEXTURE_BENCH: v }));
++  for (const k of [
++    'STROKE_UPLOAD_DIAGNOSTIC',
++    'CAMERA_PHASES',
++    'CAMERA_TIMELINE_DIR',
++  ])
++    assert.throws(() =>
++      strokeTextureMode({ STROKE_TEXTURE_BENCH: '1', [k]: '1' }),
++    );
++});
++import {
++  sameStrokeTextureScope,
++  qualifyStrokeTexture,
++} from '../../scripts/stroke-texture-bench-tools.mjs';
++test('texture native scopes require restoration and cannot be compared to unobserved timing', () => {
++  const make = (enabled) => ({
++    strokeTexture: enabled,
++    textureProbeRestored: true,
++    rounds: [
++      {
++        steps: [
++          {
++            frames: [
++              {
++                data: {
++                  strokeTexturePages: enabled ? 1 : 0,
++                  textureNative: {
++                    creates: 0,
++                    deletes: 0,
++                    uploads: 1,
++                    typedBytes: 16,
++                    domUploads: 0,
++                    offsetUploads: 0,
++                    rgba32fBytesPeak: 32,
++                    rgba32fBytesLive: enabled ? 16 : 0,
++                  },
++                },
++              },
++            ],
++          },
++        ],
++      },
++    ],
++  });
++  const a = make(false),
++    b = make(true);
++  qualifyStrokeTexture(a);
++  qualifyStrokeTexture(b);
++  sameStrokeTextureScope(a, b);
++  assert.throws(() => sameStrokeTextureScope(a, {}), /scopes differ/);
++  for (const mutate of [
++    (x) => (x.textureProbeRestored = false),
++    (x) => delete x.strokeTexture,
++    (x) => (x.rounds[0].steps[0].frames[0].data.textureNative.typedBytes = -1),
++  ]) {
++    const x = make(true);
++    mutate(x);
++    assert.throws(() => qualifyStrokeTexture(x));
++  }
++});
+diff --git a/__tests__/unit/stroke-texture.spec.ts b/__tests__/unit/stroke-texture.spec.ts
+new file mode 100644
+index 0000000..c07c383
+--- /dev/null
++++ b/__tests__/unit/stroke-texture.spec.ts
+@@ -0,0 +1,14 @@
++import {
++  packStrokeTexture,
++  StrokeTexturePage,
++  supportsStrokeTexture,
++} from '../../packages/core/src/utils/stroke-texture';
++import { packStrokeInstances } from '../../packages/core/src/utils/stroke-batching';
++import { strokeTextureContract } from '../contracts/stroke-texture';
++describe('Core stroke texture page', () =>
++  strokeTextureContract(
++    packStrokeTexture,
++    StrokeTexturePage,
++    supportsStrokeTexture,
++    packStrokeInstances,
++  ));
+diff --git a/__tests__/unit/texture-transfer-probe.spec.ts b/__tests__/unit/texture-transfer-probe.spec.ts
+new file mode 100644
+index 0000000..5d491ea
+--- /dev/null
++++ b/__tests__/unit/texture-transfer-probe.spec.ts
+@@ -0,0 +1,129 @@
++import { installTextureTransfers } from '../browser/fixtures/texture-transfer-probe';
++describe('native texture transfer recorder', () => {
++  let oldWindow: any, gl: any, probe: any, original: any;
++  beforeEach(() => {
++    oldWindow = globalThis.window;
++    class GL {
++      TEXTURE0 = 33984;
++      TEXTURE_2D = 3553;
++      RGBA32F = 34836;
++      RGBA = 6408;
++      FLOAT = 5126;
++      createTexture() {
++        return {};
++      }
++      deleteTexture(_texture: any) {}
++      activeTexture(_unit: number) {}
++      bindTexture(_target: number, _texture: any) {}
++      texStorage2D(..._args: any[]) {}
++      texImage2D(..._args: any[]) {}
++      texSubImage2D(..._args: any[]) {}
++    }
++    class GL2 extends GL {}
++    original = GL.prototype.texSubImage2D;
++    globalThis.window = {
++      WebGLRenderingContext: GL,
++      WebGL2RenderingContext: GL2,
++    } as any;
++    installTextureTransfers();
++    gl = new GL2();
++    probe = (window as any).textureTransfers;
++  });
++  afterEach(() => {
++    probe?.dispose();
++    globalThis.window = oldWindow;
++  });
++  it('counts an inherited API once and records full typed source bytes', () => {
++    const t = gl.createTexture();
++    gl.bindTexture(gl.TEXTURE_2D, t);
++    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, 4, 2);
++    gl.texSubImage2D(
++      gl.TEXTURE_2D,
++      0,
++      0,
++      0,
++      4,
++      2,
++      gl.RGBA,
++      gl.FLOAT,
++      new Float32Array(32),
++    );
++    expect(probe.snapshot()).toMatchObject({
++      creates: 1,
++      uploads: 1,
++      typedBytes: 128,
++      rgba32fBytesLive: 128,
++      rgba32fBytesPeak: 128,
++    });
++  });
++  it('tracks active units and records staging peaks before retirement', () => {
++    const a = gl.createTexture(),
++      b = gl.createTexture();
++    gl.bindTexture(gl.TEXTURE_2D, a);
++    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, 4, 4);
++    gl.activeTexture(gl.TEXTURE0 + 1);
++    gl.bindTexture(gl.TEXTURE_2D, b);
++    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, 8, 4);
++    gl.activeTexture(gl.TEXTURE0);
++    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, 2, 2);
++    expect(probe.snapshot()).toMatchObject({
++      rgba32fBytesLive: 576,
++      rgba32fBytesPeak: 768,
++    });
++    gl.deleteTexture(a);
++    expect(probe.snapshot().rgba32fBytesLive).toBe(512);
++    probe.reset();
++    expect(probe.snapshot().rgba32fBytesPeak).toBe(512);
++    gl.deleteTexture(b);
++    expect(probe.snapshot().rgba32fBytesLive).toBe(0);
++  });
++  it('separates DOM and offset uploads from known typed-byte totals', () => {
++    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, 5121, {
++      width: 4,
++      height: 4,
++    });
++    gl.texSubImage2D(
++      gl.TEXTURE_2D,
++      0,
++      0,
++      0,
++      1,
++      1,
++      gl.RGBA,
++      gl.FLOAT,
++      new Float32Array(8),
++      4,
++    );
++    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 1, 1, gl.RGBA, gl.FLOAT, 0);
++    expect(probe.snapshot()).toMatchObject({
++      uploads: 3,
++      typedBytes: 0,
++      domUploads: 1,
++      offsetUploads: 2,
++    });
++  });
++  it('restores descriptors and disables wrappers retained by another observer', () => {
++    expect(() => installTextureTransfers()).toThrow('already installed');
++    const retained = Object.getPrototypeOf(
++      Object.getPrototypeOf(gl),
++    ).texSubImage2D;
++    probe.dispose();
++    expect(Object.getPrototypeOf(Object.getPrototypeOf(gl)).texSubImage2D).toBe(
++      original,
++    );
++    expect((window as any).textureTransfers).toBeUndefined();
++    retained.call(
++      gl,
++      gl.TEXTURE_2D,
++      0,
++      0,
++      0,
++      1,
++      1,
++      gl.RGBA,
++      gl.FLOAT,
++      new Float32Array(4),
++    );
++    expect(probe.snapshot().typedBytes).toBe(0);
++  });
++});
+diff --git a/examples/workflow-canvas/benchmark-entry.ts b/examples/workflow-canvas/benchmark-entry.ts
+index 6669fda..9ebfd61 100644
+--- a/examples/workflow-canvas/benchmark-entry.ts
++++ b/examples/workflow-canvas/benchmark-entry.ts
+@@ -40,7 +40,11 @@ type Sample = {
+   completedAt: number;
+   interval?: number;
+   native: ReturnType<typeof native.snapshot>;
++  textureNative?: ReturnType<
++    NonNullable<Window['textureTransfers']>['snapshot']
++  >;
+   phases?: FramePhases;
++  strokeTexturePages?: number;
+ };
+ let samples: Sample[] = [];
+ let inFlight: Promise<void> | undefined;
+@@ -48,6 +52,21 @@ let wanted:
+   | { count: number; resolve: () => void; reject: (error: unknown) => void }
+   | undefined;
+ let disposed = false;
++const textureComparison = new URLSearchParams(location.search).has(
++  'strokeTexture',
++);
++const originalStrokeRender = StrokeBatch.prototype.render;
++const strokeRenderDescriptor = Object.getOwnPropertyDescriptor(
++  StrokeBatch.prototype,
++  'render',
++);
++let strokeTexturePages = 0;
++if (textureComparison)
++  StrokeBatch.prototype.render = function (...args) {
++    if (this.strokeTextureActive && this.instanceCount > 0)
++      strokeTexturePages++;
++    return originalStrokeRender.apply(this, args);
++  };
+ const originalSubmit = Drawcall.prototype.submit;
+ const originalCanvas = ECS.API.prototype.createCanvas;
+ ECS.API.prototype.createCanvas = function (
+@@ -62,6 +81,11 @@ ECS.API.prototype.createCanvas = function (
+   );
+   if (imageControl !== null)
+     args[0] = { ...args[0], imageBatching: imageControl !== '0' };
++  const textureControl = new URLSearchParams(location.search).get(
++    'strokeTexture',
++  );
++  if (textureControl !== null)
++    args[0] = { ...args[0], strokeTexture: textureControl === '1' };
+   return originalCanvas.apply(this, args);
+ };
+ let capturedReplayPhases: FramePhases | undefined;
+@@ -72,6 +96,8 @@ const replay = completedCameraReplay({
+   },
+   before: () => {
+     native.reset();
++    window.textureTransfers?.reset();
++    strokeTexturePages = 0;
+     phases?.begin();
+   },
+   after: () => {
+@@ -80,6 +106,8 @@ const replay = completedCameraReplay({
+   snapshot: () => ({
+     surface: replaySurface(canvas),
+     native: native.snapshot(),
++    textureNative: window.textureTransfers?.snapshot(),
++    strokeTexturePages: textureComparison ? strokeTexturePages : undefined,
+     phases: capturedReplayPhases,
+     state: state(),
+     visibleIds: runtime
+@@ -107,6 +135,8 @@ const wheelSnapshot = () => ({
+   uiView: window.workflowDemo.snapshot().view,
+   surface: replaySurface(canvas),
+   native: native.snapshot(),
++  textureNative: window.textureTransfers?.snapshot(),
++  strokeTexturePages: textureComparison ? strokeTexturePages : undefined,
+   state: state(false),
+   visibleIds: runtime
+     .api!.getNodes()
+@@ -125,6 +155,8 @@ const wheelReplay = completedCameraReplay({
+   },
+   before: () => {
+     native.reset();
++    window.textureTransfers?.reset();
++    strokeTexturePages = 0;
+     wheelPhases?.begin();
+   },
+   after: () => {
+@@ -168,6 +200,8 @@ ECS.App.prototype.run = async function () {
+     const pending = (async () => {
+       const profile = phases;
+       native.reset();
++      window.textureTransfers?.reset();
++      strokeTexturePages = 0;
+       profile?.begin();
+       const start = performance.now();
+       try {
+@@ -185,6 +219,10 @@ ECS.App.prototype.run = async function () {
+           completedAt,
+           interval: previous ? completedAt - previous : undefined,
+           native: native.snapshot(),
++          textureNative: window.textureTransfers?.snapshot(),
++          strokeTexturePages: textureComparison
++            ? strokeTexturePages
++            : undefined,
+           phases: profile?.end(),
+         });
+         previous = completedAt;
+@@ -197,6 +235,8 @@ ECS.App.prototype.run = async function () {
+   return result;
+ };
+ function profile(enabled: boolean) {
++  if (enabled && textureComparison)
++    throw new Error('Texture counters require ordinary capture');
+   if (detailedWheelPhases)
+     throw new Error('Detailed wheel phases require a dedicated capture');
+   if (active || inFlight || replay.busy || wheelInput.busy)
+@@ -257,6 +297,7 @@ function state(checkErrors = true) {
+     requestedTheme: camera
+       ? themeState(camera.themeMode, camera.theme.colors)
+       : undefined,
++    strokeTexture: runtime.api?.getCanvas().read(ECS.Canvas).strokeTexture,
+     count: nodes.length,
+     documentVersions: {
+       present: nodes.filter((node) => node.version !== undefined).length,
+@@ -457,6 +498,7 @@ const harness = {
+   async dispose() {
+     if (disposed) return;
+     disposed = true;
++    let strokeRenderRestored = true;
+     replay.dispose();
+     wheelInput.dispose();
+     canvas.removeEventListener('wheel', observeWheel, true);
+@@ -471,10 +513,23 @@ const harness = {
+       wheelPhases?.dispose();
+       wheelPhases = undefined;
+       native.dispose();
++      if (textureComparison) {
++        if (strokeRenderDescriptor)
++          Object.defineProperty(
++            StrokeBatch.prototype,
++            'render',
++            strokeRenderDescriptor,
++          );
++        else delete (StrokeBatch.prototype as any).render;
++        strokeRenderRestored =
++          StrokeBatch.prototype.render === originalStrokeRender;
++      }
+       Drawcall.prototype.submit = originalSubmit;
+       ECS.App.prototype.run = originalRun;
+       ECS.API.prototype.createCanvas = originalCanvas;
+     }
++    if (!strokeRenderRestored)
++      throw new Error('Stroke render observer survived');
+     return {
+       run: ECS.App.prototype.run === originalRun,
+       createCanvas: ECS.API.prototype.createCanvas === originalCanvas,
+diff --git a/packages/core/src/Canvas.ts b/packages/core/src/Canvas.ts
+index 66ede08..2dec6d5 100755
+--- a/packages/core/src/Canvas.ts
++++ b/packages/core/src/Canvas.ts
+@@ -105,6 +105,8 @@ export interface CanvasConfig {
+   }>;
+   /** Experimental ordered pages for solid Path fills and compatible strokes; defaults off. */
+   pathInstancing?: boolean;
++  /** Experimental page-owned stroke geometry textures; WebGL2 only, defaults off. */
++  strokeTexture?: boolean;
+   /** Experimental ordered immutable image rectangles; defaults off. */
+   imageBatching?: boolean;
+   /** Experimental ordered ordinary-text geometry batching; defaults off. */
+@@ -159,6 +161,7 @@ export class Canvas {
+       canvas,
+       renderer = 'webgl',
+       pathInstancing = false,
++      strokeTexture = false,
+       imageBatching = false,
+       textBatching = false,
+       shaderCompilerPath = '',
+@@ -201,6 +204,7 @@ export class Canvas {
+       renderer,
+       shaderCompilerPath,
+       pathInstancing,
++      strokeTexture,
+       imageBatching,
+       textBatching,
+       devicePixelRatio: dpr,
+@@ -440,6 +444,16 @@ export class Canvas {
+     }
+   }
+ 
++  get strokeTexture() {
++    return this.#pluginContext.strokeTexture ?? false;
++  }
++  set strokeTexture(enabled: boolean) {
++    if (this.strokeTexture !== enabled) {
++      this.#pluginContext.strokeTexture = enabled;
++      this.#renderDirtyFlag = true;
++    }
++  }
++
+   get pathInstancing() {
+     return this.#pluginContext.pathInstancing ?? false;
+   }
+diff --git a/packages/core/src/drawcalls/SmoothPolyline.ts b/packages/core/src/drawcalls/SmoothPolyline.ts
+index 4cfeab9..6d9faf3 100755
+--- a/packages/core/src/drawcalls/SmoothPolyline.ts
++++ b/packages/core/src/drawcalls/SmoothPolyline.ts
+@@ -1,3 +1,8 @@
++import {
++  StrokeTexturePage,
++  packStrokeTexture,
++  supportsStrokeTexture,
++} from '../utils/stroke-texture';
+ import { acquireStrokePageConstants } from '../utils/stroke-page-buffers';
+ import { packStrokeInstances, type StrokePart } from '../utils/stroke-batching';
+ import {
+@@ -46,6 +51,107 @@ const strokeAlignmentMap = {
+ } as const;
+ 
+ export class SmoothPolyline extends PathDrawcall {
++  #strokeTextureWanted = false;
++  #strokeTextureActive = false;
++  #strokeTextureMaterial = false;
++  #strokeTexturePage: StrokeTexturePage | undefined;
++  get strokeTextureActive() {
++    return this.#strokeTextureActive;
++  }
++
++  protected override prepareGeometry(scene: Record<string, unknown>) {
++    super.prepareGeometry(scene);
++    const wanted = this.strokeBatch && !!scene.u_StrokeTexture;
++    if (wanted !== this.#strokeTextureWanted) {
++      this.#strokeTextureWanted = wanted;
++      this.geometryDirty = this.materialDirty = true;
++    }
++    if (this.#strokeTextureMaterial !== this.#strokeTextureActive)
++      this.materialDirty = true;
++  }
++
++  /** An owned page texture remains valid on every cached submit, without eviction. */
++  protected releaseStrokeTexture() {
++    if (!this.#strokeTexturePage) return;
++    this.vertexBuffers = [];
++    this.indexBuffer = undefined;
++    this.#strokeTexturePage.destroy();
++    this.#strokeTexturePage = undefined;
++    this.#strokeTextureActive = false;
++    this.materialDirty = true;
++  }
++
++  private updateStrokeTexture(parts: StrokePart[]) {
++    if (!this.#strokeTextureWanted && !this.#strokeTexturePage) return false;
++    const data = this.#strokeTextureWanted
++      ? packStrokeTexture(parts, 1)
++      : undefined;
++    if (!data || !supportsStrokeTexture(this.device, data)) {
++      this.releaseStrokeTexture();
++      return false;
++    }
++    let page = this.#strokeTexturePage;
++    const fresh = !page;
++    if (!page) page = new StrokeTexturePage(this.device);
++    let textureChanged: boolean;
++    try {
++      textureChanged = page.update(data);
++    } catch (error) {
++      if (fresh) page.destroy();
++      throw error;
++    }
++    if (!this.#strokeTextureActive) {
++      this.releaseBatchConstants();
++      this.#segmentsBuffer?.destroy();
++      this.#travelBuffer?.destroy();
++      this.#segmentsBuffer = undefined;
++      this.#travelBuffer = undefined;
++      this.materialDirty = true;
++    }
++    if (textureChanged) this.materialDirty = true;
++    this.#strokeTexturePage = page;
++    this.#strokeTextureActive = true;
++    this.pointsBuffer = data.instances;
++    this.travelBuffer = [];
++    this.indexBuffer = page.constants.index;
++    this.indexBufferData = new Uint32Array([
++      0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 4, 7, 8,
++    ]);
++    this.vertexBuffers = [page.buffer, page.constants.vertices];
++    this.vertexBufferOffsets = [0, 0];
++    this.vertexBufferDatas = [
++      data.instances,
++      new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
++    ];
++    this.vertexBufferDescriptors = [
++      {
++        arrayStride: data.instanceStride * 4,
++        stepMode: VertexStepMode.INSTANCE,
++        attributes: [
++          { format: Format.F32_R, offset: 0, shaderLocation: Location.PREV },
++          {
++            format: Format.F32_RGB,
++            offset: 4,
++            shaderLocation: Location.BATCH_TRANSFORM_ORDER,
++          },
++          { format: Format.F32_R, offset: 16, shaderLocation: Location.TRAVEL },
++        ],
++      },
++      {
++        arrayStride: 4,
++        stepMode: VertexStepMode.VERTEX,
++        attributes: [
++          {
++            format: Format.F32_R,
++            offset: 0,
++            shaderLocation: Location.VERTEX_NUM,
++          },
++        ],
++      },
++    ];
++    return true;
++  }
++
+   protected get strokeBatch(): boolean {
+     return false;
+   }
+@@ -158,6 +264,7 @@ export class SmoothPolyline extends PathDrawcall {
+   travelBuffer: number[] | Float32Array = [];
+ 
+   get instanceCount() {
++    if (this.#strokeTextureActive) return this.#strokeTexturePage.rows;
+     if (this.strokeBatch) return this.pointsBuffer.length / 15;
+     const instance = this.shapes[0];
+     if (
+@@ -242,6 +349,7 @@ export class SmoothPolyline extends PathDrawcall {
+       offset += 9;
+     });
+     this.indexBufferData = new Uint32Array(indices);
++    if (parts && this.updateStrokeTexture(parts)) return;
+     const packed = parts ? packStrokeInstances(parts, 1) : undefined;
+     this.pointsBuffer = packed?.points ?? pointsBuffer;
+     this.travelBuffer = packed?.travel ?? travelBuffer;
+@@ -429,6 +537,7 @@ export class SmoothPolyline extends PathDrawcall {
+ 
+   createMaterial(defines: string, uniformBuffer: Buffer): void {
+     if (this.strokeBatch) defines += '#define USE_STROKE_BATCH\n';
++    if (this.#strokeTextureActive) defines += '#define USE_STROKE_TEXTURE\n';
+     if (this.instanceCount <= 0) {
+       return;
+     }
+@@ -491,6 +600,14 @@ export class SmoothPolyline extends PathDrawcall {
+ 
+     this.bindings = this.device.createBindings({
+       pipeline: this.pipeline,
++      samplerBindings: this.#strokeTextureActive
++        ? [
++            {
++              texture: this.#strokeTexturePage.texture,
++              sampler: this.#strokeTexturePage.sampler,
++            },
++          ]
++        : [],
+       uniformBufferBindings: [
+         {
+           buffer: uniformBuffer,
+@@ -500,6 +617,7 @@ export class SmoothPolyline extends PathDrawcall {
+         },
+       ],
+     });
++    this.#strokeTextureMaterial = this.#strokeTextureActive;
+   }
+ 
+   render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
+@@ -550,6 +668,8 @@ export class SmoothPolyline extends PathDrawcall {
+   }
+ 
+   destroy(): void {
++    this.releaseStrokeTexture();
++
+     super.destroy();
+     if (this.program) {
+       this.#uniformBuffer?.destroy();
+diff --git a/packages/core/src/drawcalls/StrokeBatch.ts b/packages/core/src/drawcalls/StrokeBatch.ts
+index 39f4441..45710e2 100644
+--- a/packages/core/src/drawcalls/StrokeBatch.ts
++++ b/packages/core/src/drawcalls/StrokeBatch.ts
+@@ -146,6 +146,7 @@ export class StrokeBatch extends SmoothPolyline {
+ 
+   override destroy() {
+     if (this.destroyed) return;
++    this.releaseStrokeTexture();
+     this.releaseBatchConstants();
+     this.vertexBuffers = [...new Set(this.vertexBuffers)];
+     super.destroy();
+diff --git a/packages/core/src/plugins/Renderer.ts b/packages/core/src/plugins/Renderer.ts
+index 5f501bd..aa3b071 100755
+--- a/packages/core/src/plugins/Renderer.ts
++++ b/packages/core/src/plugins/Renderer.ts
+@@ -180,6 +180,8 @@ export class Renderer implements Plugin {
+         usage: BufferUsage.UNIFORM,
+         hint: BufferFrequencyHint.DYNAMIC,
+       });
++      legacyObject['u_StrokeTexture'] =
++        !this.#enableCapture && !!context.strokeTexture;
+       this.#uniformLegacyObject = legacyObject;
+ 
+       this.#grid = new Grid();
+@@ -233,6 +235,8 @@ export class Renderer implements Plugin {
+ 
+       const [buffer, legacyObject] = updateUniform(shouldRenderGrid);
+       this.#uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
++      legacyObject['u_StrokeTexture'] =
++        !this.#enableCapture && !!context.strokeTexture;
+       this.#uniformLegacyObject = legacyObject;
+ 
+       this.#device.beginFrame();
+diff --git a/packages/core/src/shaders/polyline.ts b/packages/core/src/shaders/polyline.ts
+index a4188ca..1d64990 100755
+--- a/packages/core/src/shaders/polyline.ts
++++ b/packages/core/src/shaders/polyline.ts
+@@ -48,6 +48,17 @@ layout(std140) uniform SceneUniforms {
+ };
+ 
+ ${wireframe_vert_declaration}
++#ifdef USE_STROKE_TEXTURE
++layout(location = ${Location.PREV}) in float a_StrokeRow;
++layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
++uniform highp sampler2D u_StrokeGeometry;
++vec2 a_Prev, a_PointA, a_PointB, a_Next;
++float a_VertexJoint;
++layout(location = ${Location.TRAVEL}) in float a_Travel;
++vec4 strokeTexel(int index) {
++  return texelFetch(u_StrokeGeometry, ivec2(index & 255, index >> 8), 0);
++}
++#else
+ layout(location = ${Location.PREV}) in vec2 a_Prev;
+ layout(location = ${Location.POINTA}) in vec2 a_PointA;
+ layout(location = ${Location.POINTB}) in vec2 a_PointB;
+@@ -56,6 +67,8 @@ layout(location = ${Location.VERTEX_JOINT}) in float a_VertexJoint;
+ layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
+ layout(location = ${Location.TRAVEL}) in float a_Travel;
+ 
++#endif
++
+ #ifdef USE_STROKE_BATCH
+ layout(location = ${Location.BATCH_TRANSFORM_ORDER}) in vec3 a_BatchTransformOrder;
+ #endif
+@@ -120,6 +133,16 @@ vec2 doBisect(
+ // }
+ 
+ void main() {
++#ifdef USE_STROKE_TEXTURE
++  int row = int(a_StrokeRow);
++  a_Prev = strokeTexel(row).xy;
++  vec4 sourceA = strokeTexel(row + 1);
++  a_PointA = sourceA.xy;
++  a_VertexJoint = sourceA.z;
++  a_PointB = strokeTexel(row + 2).xy;
++  a_Next = strokeTexel(row + 3).xy;
++#endif
++
+   ${wireframe_vert}
+ 
+   mat3 model = u_ModelMatrix;
+diff --git a/packages/core/src/utils/stroke-texture.ts b/packages/core/src/utils/stroke-texture.ts
+new file mode 100644
+index 0000000..ddb8e9e
+--- /dev/null
++++ b/packages/core/src/utils/stroke-texture.ts
+@@ -0,0 +1,167 @@
++import {
++  type Device,
++  type Buffer,
++  type Texture,
++  type Sampler,
++  Format,
++  BufferUsage,
++  BufferFrequencyHint,
++  TextureUsage,
++  AddressMode,
++  FilterMode,
++  MipmapFilterMode,
++} from '@antv/g-device-api';
++import { acquireStrokePageConstants } from './stroke-page-buffers';
++import type { StrokePart } from './stroke-batching';
++
++/** Page-owned geometry; no shared mutable slots or entity references. */
++export function packStrokeTexture(parts: readonly StrokePart[], stride: 1 | 3) {
++  let pointCount = 0,
++    rows = 0;
++  for (const p of parts) {
++    if (p.points.length % 3 !== 0) return undefined;
++    pointCount += Math.ceil(p.points.length / 3);
++    rows += Math.max(0, Math.ceil(p.points.length / 3 - 3));
++  }
++  // One MiB per page, including row padding; oversized pages use packed geometry.
++  const width = 256,
++    height = Math.max(1, Math.ceil(pointCount / width));
++  if (height > 256 || !rows) return undefined;
++  const geometry = new Float32Array(width * height * 4);
++  const instanceStride = 4 + stride;
++  const instances = new Float32Array(rows * instanceStride);
++  let base = 0,
++    target = 0;
++  for (const part of parts) {
++    const n = Math.ceil(part.points.length / 3);
++    for (let j = 0; j < n; j++) {
++      const offset = (base + j) * 4;
++      for (let k = 0; k < 3; k++)
++        geometry[offset + k] = part.points[j * 3 + k] ?? 0;
++    }
++    for (let j = 0; j < Math.max(0, n - 3); j++) {
++      instances[target++] = base + j;
++      for (const value of part.translationAndOrder) instances[target++] = value;
++      for (let k = 0; k < stride; k++)
++        instances[target++] = part.travel[j * stride + k] ?? 0;
++    }
++    base += n;
++  }
++  return { width, height, rows, geometry, instances, instanceStride };
++}
++export type StrokeTextureData = NonNullable<
++  ReturnType<typeof packStrokeTexture>
++>;
++const equal = (a: Float32Array | undefined, b: Float32Array) => {
++  if (!a || a.length !== b.length) return false;
++  const x = new Uint32Array(a.buffer, a.byteOffset, a.length),
++    y = new Uint32Array(b.buffer, b.byteOffset, b.length);
++  return x.every((v, i) => v === y[i]);
++};
++export function supportsStrokeTexture(device: Device, data: StrokeTextureData) {
++  return (
++    device.queryVendorInfo().platformString === 'WebGL2' &&
++    device.queryTextureFormatSupported(Format.F32_RGBA, data.width, data.height)
++  );
++}
++export class StrokeTexturePage {
++  readonly constants: ReturnType<typeof acquireStrokePageConstants>;
++  sampler: Sampler;
++  texture: Texture;
++  buffer: Buffer;
++  rows = 0;
++  data: StrokeTextureData;
++  #snapshot: Float32Array | undefined;
++  #capacity = 0;
++  #stride = 0;
++  #height = 0;
++  #width = 0;
++  #destroyed = false;
++  constructor(private device: Device) {
++    this.constants = acquireStrokePageConstants(device);
++    try {
++      this.sampler = device.createSampler({
++        addressModeU: AddressMode.CLAMP_TO_EDGE,
++        addressModeV: AddressMode.CLAMP_TO_EDGE,
++        minFilter: FilterMode.POINT,
++        magFilter: FilterMode.POINT,
++        mipmapFilter: MipmapFilterMode.NO_MIP,
++      });
++    } catch (error) {
++      this.constants.release();
++      throw error;
++    }
++  }
++  update(data: StrokeTextureData) {
++    if (this.#destroyed) throw new Error('Retired stroke texture page');
++    let nextTexture = this.texture,
++      nextBuffer = this.buffer;
++    const resizeTexture =
++      !nextTexture ||
++      data.width !== this.#width ||
++      data.height > this.#height ||
++      data.height * 2 < this.#height;
++    const resizeBuffer =
++      !nextBuffer ||
++      data.instanceStride !== this.#stride ||
++      data.rows > this.#capacity ||
++      (this.#capacity > 16 && data.rows * 2 < this.#capacity);
++    const capacity = resizeBuffer
++      ? Math.ceil(data.rows / 16) * 16
++      : this.#capacity;
++    try {
++      if (resizeTexture)
++        nextTexture = this.device.createTexture({
++          format: Format.F32_RGBA,
++          width: data.width,
++          height: data.height,
++          usage: TextureUsage.SAMPLED,
++          mipLevelCount: 1,
++        });
++      if (resizeBuffer)
++        nextBuffer = this.device.createBuffer({
++          viewOrSize: capacity * data.instanceStride * 4,
++          usage: BufferUsage.VERTEX,
++          hint: BufferFrequencyHint.DYNAMIC,
++        });
++      if (resizeTexture || !equal(this.#snapshot, data.geometry)) {
++        const pixels =
++          !resizeTexture && this.#height > data.height
++            ? new Float32Array(data.width * this.#height * 4)
++            : data.geometry;
++        if (pixels !== data.geometry) pixels.set(data.geometry);
++        nextTexture.setImageData([pixels]);
++      }
++      nextBuffer.setSubData(0, new Uint8Array(data.instances.buffer));
++    } catch (error) {
++      // Same-handle writes can be partial; a retry must refresh geometry in full.
++      this.#snapshot = undefined;
++      if (nextTexture && nextTexture !== this.texture) nextTexture.destroy();
++      if (nextBuffer && nextBuffer !== this.buffer) nextBuffer.destroy();
++      throw error;
++    }
++    if (nextTexture !== this.texture) this.texture?.destroy();
++    if (nextBuffer !== this.buffer) this.buffer?.destroy();
++    const changed = nextTexture !== this.texture;
++    this.texture = nextTexture;
++    this.buffer = nextBuffer;
++    this.#height = resizeTexture ? data.height : this.#height;
++    this.#width = data.width;
++    this.#capacity = capacity;
++    this.#stride = data.instanceStride;
++    this.#snapshot = data.geometry;
++    this.data = data;
++    this.rows = data.rows;
++    return changed;
++  }
++  destroy() {
++    if (this.#destroyed) return;
++    this.#destroyed = true;
++    this.texture?.destroy();
++    this.buffer?.destroy();
++    this.sampler.destroy();
++    this.constants.release();
++    this.#snapshot = undefined;
++    this.data = undefined;
++  }
++}
+diff --git a/packages/ecs/src/API.ts b/packages/ecs/src/API.ts
+index 103de74..a87c324 100644
+--- a/packages/ecs/src/API.ts
++++ b/packages/ecs/src/API.ts
+@@ -1084,6 +1084,12 @@ export class API {
+   }
+ 
+   /** Experimental screen-only Path fill/stroke pages; disabled by default. */
++  setStrokeTextureEnabled(enabled: boolean) {
++    this.runAtNextTick(() => {
++      this.#canvas.write(Canvas).strokeTexture = enabled;
++    });
++  }
++
+   setPathInstancingEnabled(enabled: boolean) {
+     this.runAtNextTick(() => {
+       this.#canvas.write(Canvas).pathInstancing = enabled;
+diff --git a/packages/ecs/src/components/Canvas.ts b/packages/ecs/src/components/Canvas.ts
+index 76de122..91fba03 100755
+--- a/packages/ecs/src/components/Canvas.ts
++++ b/packages/ecs/src/components/Canvas.ts
+@@ -51,6 +51,9 @@ export class Canvas {
+   @field({ type: Type.boolean, default: false })
+   declare pathInstancing: boolean;
+ 
++  /** Experimental page-owned stroke geometry textures. Runtime only, default off. */
++  @field({ type: Type.boolean, default: false }) declare strokeTexture: boolean;
++
+   /** Experimental render-only simplification for ordinary open polylines. */
+   @field({ type: Type.boolean, default: false }) declare polylineLOD: boolean;
+ 
+diff --git a/packages/ecs/src/drawcalls/SmoothPolyline.ts b/packages/ecs/src/drawcalls/SmoothPolyline.ts
+index 0287824..1db377a 100755
+--- a/packages/ecs/src/drawcalls/SmoothPolyline.ts
++++ b/packages/ecs/src/drawcalls/SmoothPolyline.ts
+@@ -1,3 +1,8 @@
++import {
++  StrokeTexturePage,
++  packStrokeTexture,
++  supportsStrokeTexture,
++} from '../utils/stroke-texture';
+ import { acquireStrokePageConstants } from '../utils/stroke-page-buffers';
+ import { packStrokeInstances, type StrokePart } from '../utils/stroke-batching';
+ import {
+@@ -116,6 +121,101 @@ const strokeAlignmentMap = {
+ } as const;
+ 
+ export class SmoothPolyline extends PathDrawcall {
++  #strokeTextureBindings = false;
++  #strokeTextureWanted = false;
++  #strokeTextureActive = false;
++  #strokeTextureMaterial = false;
++  #strokeTexturePage: StrokeTexturePage | undefined;
++  get strokeTextureActive() {
++    return this.#strokeTextureActive;
++  }
++
++  /** An owned page texture remains valid on every cached submit, without eviction. */
++  protected releaseStrokeTexture() {
++    if (!this.#strokeTexturePage) return;
++    this.vertexBuffers = [];
++    this.indexBuffer = undefined;
++    this.#strokeTexturePage.destroy();
++    this.#strokeTexturePage = undefined;
++    this.#strokeTextureActive = false;
++    this.materialDirty = true;
++  }
++
++  private updateStrokeTexture(parts: StrokePart[]) {
++    if (!this.#strokeTextureWanted && !this.#strokeTexturePage) return false;
++    const data = this.#strokeTextureWanted
++      ? packStrokeTexture(parts, 3)
++      : undefined;
++    if (!data || !supportsStrokeTexture(this.device, data)) {
++      this.releaseStrokeTexture();
++      return false;
++    }
++    let page = this.#strokeTexturePage;
++    const fresh = !page;
++    if (!page) page = new StrokeTexturePage(this.device);
++    let textureChanged: boolean;
++    try {
++      textureChanged = page.update(data);
++    } catch (error) {
++      if (fresh) page.destroy();
++      throw error;
++    }
++    if (!this.#strokeTextureActive) {
++      this.releaseBatchConstants();
++      this.#segmentsBuffer?.destroy();
++      this.#travelBuffer?.destroy();
++      this.#segmentsBuffer = undefined;
++      this.#travelBuffer = undefined;
++      this.materialDirty = true;
++    }
++    if (textureChanged) this.materialDirty = true;
++    this.#strokeTexturePage = page;
++    this.#strokeTextureActive = true;
++    this.pointsBuffer = data.instances;
++    this.travelBuffer = [];
++    this.indexBuffer = page.constants.index;
++    this.indexBufferData = new Uint32Array([
++      0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 4, 7, 8,
++    ]);
++    this.vertexBuffers = [page.buffer, page.constants.vertices];
++    this.vertexBufferOffsets = [0, 0];
++    this.vertexBufferDatas = [
++      data.instances,
++      new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
++    ];
++    this.vertexBufferDescriptors = [
++      {
++        arrayStride: data.instanceStride * 4,
++        stepMode: VertexStepMode.INSTANCE,
++        attributes: [
++          { format: Format.F32_R, offset: 0, shaderLocation: Location.PREV },
++          {
++            format: Format.F32_RGB,
++            offset: 4,
++            shaderLocation: Location.BATCH_TRANSFORM_ORDER,
++          },
++          {
++            format: Format.F32_RGB,
++            offset: 16,
++            shaderLocation: Location.TRAVEL,
++          },
++        ],
++      },
++      {
++        arrayStride: 4,
++        stepMode: VertexStepMode.VERTEX,
++        attributes: [
++          {
++            format: Format.F32_R,
++            offset: 0,
++            shaderLocation: Location.VERTEX_NUM,
++          },
++        ],
++      },
++    ];
++    return true;
++  }
++
+   protected get strokeBatch(): boolean {
+     return false;
+   }
+@@ -125,6 +225,13 @@ export class SmoothPolyline extends PathDrawcall {
+ 
+   protected override prepareGeometry(uniforms: Record<string, unknown>) {
+     super.prepareGeometry(uniforms);
++    const wanted = this.strokeBatch && !!uniforms.u_StrokeTexture;
++    if (wanted !== this.#strokeTextureWanted) {
++      this.#strokeTextureWanted = wanted;
++      this.geometryDirty = this.materialDirty = true;
++    }
++    if (this.#strokeTextureMaterial !== this.#strokeTextureActive)
++      this.materialDirty = true;
+     for (const shape of this.shapes) {
+       if (!shape.has(Polyline) || shape.has(Rough)) continue;
+       // Edits while interaction forces full must invalidate retained coarse levels too.
+@@ -313,6 +420,7 @@ export class SmoothPolyline extends PathDrawcall {
+   travelBuffer: number[] | Float32Array = [];
+ 
+   get instanceCount() {
++    if (this.#strokeTextureActive) return this.#strokeTexturePage.rows;
+     if (this.strokeBatch) return this.pointsBuffer.length / 15;
+     return Math.max(0, this.pointsBuffer.length / strideFloats - 3);
+   }
+@@ -384,6 +492,7 @@ export class SmoothPolyline extends PathDrawcall {
+       offset += 9;
+     });
+     this.indexBufferData = new Uint32Array(indices);
++    if (parts && this.updateStrokeTexture(parts)) return;
+     const packed = parts ? packStrokeInstances(parts, 3) : undefined;
+     this.pointsBuffer = packed?.points ?? pointsBuffer;
+     this.travelBuffer = packed?.travel ?? travelBuffer;
+@@ -567,9 +676,15 @@ export class SmoothPolyline extends PathDrawcall {
+ 
+   createMaterial(defines: string, uniformBuffer: Buffer): void {
+     if (this.strokeBatch) defines += '#define USE_STROKE_BATCH\n';
++    if (this.#strokeTextureActive) defines += '#define USE_STROKE_TEXTURE\n';
+     const useStrokeGradient = defines.includes('USE_STROKE_GRADIENT');
+ 
+-    this.bindings?.destroy();
++    if (this.bindings) {
++      if (this.#strokeTextureBindings) this.bindings.destroy();
++      else this.renderCache.releaseBindings(this.bindings);
++      this.bindings = undefined;
++    }
++    this.#strokeTextureBindings = false;
+ 
+     if (!useStrokeGradient) {
+       this.#teardownStrokeGradientTexture();
+@@ -716,7 +831,17 @@ export class SmoothPolyline extends PathDrawcall {
+       ];
+     }
+ 
+-    this.bindings = this.renderCache.createBindings(bindings);
++    if (this.#strokeTextureActive) {
++      bindings.samplerBindings = [
++        {
++          texture: this.#strokeTexturePage.texture,
++          sampler: this.#strokeTexturePage.sampler,
++        },
++      ];
++      this.bindings = this.device.createBindings(bindings);
++      this.#strokeTextureBindings = true;
++    } else this.bindings = this.renderCache.createBindings(bindings);
++    this.#strokeTextureMaterial = this.#strokeTextureActive;
+   }
+ 
+   private applyRasterFilterChainIfNeeded(
+@@ -803,6 +928,13 @@ export class SmoothPolyline extends PathDrawcall {
+   }
+ 
+   destroy(): void {
++    this.releaseStrokeTexture();
++    if (this.#strokeTextureBindings) {
++      this.bindings?.destroy();
++      this.bindings = undefined;
++      this.#strokeTextureBindings = false;
++    }
++
+     this.#teardownStrokeGradientTexture();
+     super.destroy();
+     if (this.program) {
+diff --git a/packages/ecs/src/drawcalls/StrokeBatch.ts b/packages/ecs/src/drawcalls/StrokeBatch.ts
+index c62cbf6..ce687f4 100644
+--- a/packages/ecs/src/drawcalls/StrokeBatch.ts
++++ b/packages/ecs/src/drawcalls/StrokeBatch.ts
+@@ -191,6 +191,7 @@ export class StrokeBatch extends SmoothPolyline {
+ 
+   override destroy() {
+     if (this.destroyed) return;
++    this.releaseStrokeTexture();
+     this.releaseBatchConstants();
+     this.vertexBuffers = [...new Set(this.vertexBuffers)];
+     // Empty/degenerate pages may retire before a material/program was created.
+diff --git a/packages/ecs/src/shaders/polyline.ts b/packages/ecs/src/shaders/polyline.ts
+index 3c5d2fd..a61683f 100755
+--- a/packages/ecs/src/shaders/polyline.ts
++++ b/packages/ecs/src/shaders/polyline.ts
+@@ -50,6 +50,17 @@ layout(std140) uniform SceneUniforms {
+ };
+ 
+ ${wireframe_vert_declaration}
++#ifdef USE_STROKE_TEXTURE
++layout(location = ${Location.PREV}) in float a_StrokeRow;
++layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
++uniform highp sampler2D u_StrokeGeometry;
++vec2 a_Prev, a_PointA, a_PointB, a_Next;
++float a_VertexJoint;
++layout(location = ${Location.TRAVEL}) in vec3 a_Travel;
++vec4 strokeTexel(int index) {
++  return texelFetch(u_StrokeGeometry, ivec2(index & 255, index >> 8), 0);
++}
++#else
+ layout(location = ${Location.PREV}) in vec2 a_Prev;
+ layout(location = ${Location.POINTA}) in vec2 a_PointA;
+ layout(location = ${Location.POINTB}) in vec2 a_PointB;
+@@ -58,6 +69,8 @@ layout(location = ${Location.VERTEX_JOINT}) in float a_VertexJoint;
+ layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
+ layout(location = ${Location.TRAVEL}) in vec3 a_Travel;
+ 
++#endif
++
+ #ifdef USE_STROKE_BATCH
+ layout(location = ${Location.BATCH_TRANSFORM_ORDER}) in vec3 a_BatchTransformOrder;
+ #endif
+@@ -148,6 +161,16 @@ mat3 inverseMat3(mat3 m) {
+ // }
+ 
+ void main() {
++#ifdef USE_STROKE_TEXTURE
++  int row = int(a_StrokeRow);
++  a_Prev = strokeTexel(row).xy;
++  vec4 sourceA = strokeTexel(row + 1);
++  a_PointA = sourceA.xy;
++  a_VertexJoint = sourceA.z;
++  a_PointB = strokeTexel(row + 2).xy;
++  a_Next = strokeTexel(row + 3).xy;
++#endif
++
+   ${wireframe_vert}
+ 
+   mat3 model = u_ModelMatrix;
+diff --git a/packages/ecs/src/systems/MeshPipeline.ts b/packages/ecs/src/systems/MeshPipeline.ts
+index 53bda66..cc1ff5b 100644
+--- a/packages/ecs/src/systems/MeshPipeline.ts
++++ b/packages/ecs/src/systems/MeshPipeline.ts
+@@ -851,6 +851,8 @@ export class MeshPipeline extends System {
+       // Render precision is pass-local: both whole and partial raster exports stay full.
+       legacyObject.u_PolylineLOD = !raster && canvas.read(Canvas).polylineLOD;
+       legacyObject.u_PolylineLODDPR = canvas.read(Canvas).devicePixelRatio;
++      legacyObject.u_StrokeTexture =
++        !raster && canvas.read(Canvas).strokeTexture;
+       renderer.uniformLegacyObject = legacyObject;
+ 
+       uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
+diff --git a/packages/ecs/src/utils/stroke-texture.ts b/packages/ecs/src/utils/stroke-texture.ts
+new file mode 100644
+index 0000000..23dc2c6
+--- /dev/null
++++ b/packages/ecs/src/utils/stroke-texture.ts
+@@ -0,0 +1,167 @@
++import {
++  type Device,
++  type Buffer,
++  type Texture,
++  type Sampler,
++  Format,
++  BufferUsage,
++  BufferFrequencyHint,
++  TextureUsage,
++  AddressMode,
++  FilterMode,
++  MipmapFilterMode,
++} from '@infinite-canvas-tutorial/device-api';
++import { acquireStrokePageConstants } from './stroke-page-buffers';
++import type { StrokePart } from './stroke-batching';
++
++/** Page-owned geometry; no shared mutable slots or entity references. */
++export function packStrokeTexture(parts: readonly StrokePart[], stride: 1 | 3) {
++  let pointCount = 0,
++    rows = 0;
++  for (const p of parts) {
++    if (p.points.length % 3 !== 0) return undefined;
++    pointCount += Math.ceil(p.points.length / 3);
++    rows += Math.max(0, Math.ceil(p.points.length / 3 - 3));
++  }
++  // One MiB per page, including row padding; oversized pages use packed geometry.
++  const width = 256,
++    height = Math.max(1, Math.ceil(pointCount / width));
++  if (height > 256 || !rows) return undefined;
++  const geometry = new Float32Array(width * height * 4);
++  const instanceStride = 4 + stride;
++  const instances = new Float32Array(rows * instanceStride);
++  let base = 0,
++    target = 0;
++  for (const part of parts) {
++    const n = Math.ceil(part.points.length / 3);
++    for (let j = 0; j < n; j++) {
++      const offset = (base + j) * 4;
++      for (let k = 0; k < 3; k++)
++        geometry[offset + k] = part.points[j * 3 + k] ?? 0;
++    }
++    for (let j = 0; j < Math.max(0, n - 3); j++) {
++      instances[target++] = base + j;
++      for (const value of part.translationAndOrder) instances[target++] = value;
++      for (let k = 0; k < stride; k++)
++        instances[target++] = part.travel[j * stride + k] ?? 0;
++    }
++    base += n;
++  }
++  return { width, height, rows, geometry, instances, instanceStride };
++}
++export type StrokeTextureData = NonNullable<
++  ReturnType<typeof packStrokeTexture>
++>;
++const equal = (a: Float32Array | undefined, b: Float32Array) => {
++  if (!a || a.length !== b.length) return false;
++  const x = new Uint32Array(a.buffer, a.byteOffset, a.length),
++    y = new Uint32Array(b.buffer, b.byteOffset, b.length);
++  return x.every((v, i) => v === y[i]);
++};
++export function supportsStrokeTexture(device: Device, data: StrokeTextureData) {
++  return (
++    device.queryVendorInfo().platformString === 'WebGL2' &&
++    device.queryTextureFormatSupported(Format.F32_RGBA, data.width, data.height)
++  );
++}
++export class StrokeTexturePage {
++  readonly constants: ReturnType<typeof acquireStrokePageConstants>;
++  sampler: Sampler;
++  texture: Texture;
++  buffer: Buffer;
++  rows = 0;
++  data: StrokeTextureData;
++  #snapshot: Float32Array | undefined;
++  #capacity = 0;
++  #stride = 0;
++  #height = 0;
++  #width = 0;
++  #destroyed = false;
++  constructor(private device: Device) {
++    this.constants = acquireStrokePageConstants(device);
++    try {
++      this.sampler = device.createSampler({
++        addressModeU: AddressMode.CLAMP_TO_EDGE,
++        addressModeV: AddressMode.CLAMP_TO_EDGE,
++        minFilter: FilterMode.POINT,
++        magFilter: FilterMode.POINT,
++        mipmapFilter: MipmapFilterMode.NO_MIP,
++      });
++    } catch (error) {
++      this.constants.release();
++      throw error;
++    }
++  }
++  update(data: StrokeTextureData) {
++    if (this.#destroyed) throw new Error('Retired stroke texture page');
++    let nextTexture = this.texture,
++      nextBuffer = this.buffer;
++    const resizeTexture =
++      !nextTexture ||
++      data.width !== this.#width ||
++      data.height > this.#height ||
++      data.height * 2 < this.#height;
++    const resizeBuffer =
++      !nextBuffer ||
++      data.instanceStride !== this.#stride ||
++      data.rows > this.#capacity ||
++      (this.#capacity > 16 && data.rows * 2 < this.#capacity);
++    const capacity = resizeBuffer
++      ? Math.ceil(data.rows / 16) * 16
++      : this.#capacity;
++    try {
++      if (resizeTexture)
++        nextTexture = this.device.createTexture({
++          format: Format.F32_RGBA,
++          width: data.width,
++          height: data.height,
++          usage: TextureUsage.SAMPLED,
++          mipLevelCount: 1,
++        });
++      if (resizeBuffer)
++        nextBuffer = this.device.createBuffer({
++          viewOrSize: capacity * data.instanceStride * 4,
++          usage: BufferUsage.VERTEX,
++          hint: BufferFrequencyHint.DYNAMIC,
++        });
++      if (resizeTexture || !equal(this.#snapshot, data.geometry)) {
++        const pixels =
++          !resizeTexture && this.#height > data.height
++            ? new Float32Array(data.width * this.#height * 4)
++            : data.geometry;
++        if (pixels !== data.geometry) pixels.set(data.geometry);
++        nextTexture.setImageData([pixels]);
++      }
++      nextBuffer.setSubData(0, new Uint8Array(data.instances.buffer));
++    } catch (error) {
++      // Same-handle writes can be partial; a retry must refresh geometry in full.
++      this.#snapshot = undefined;
++      if (nextTexture && nextTexture !== this.texture) nextTexture.destroy();
++      if (nextBuffer && nextBuffer !== this.buffer) nextBuffer.destroy();
++      throw error;
++    }
++    if (nextTexture !== this.texture) this.texture?.destroy();
++    if (nextBuffer !== this.buffer) this.buffer?.destroy();
++    const changed = nextTexture !== this.texture;
++    this.texture = nextTexture;
++    this.buffer = nextBuffer;
++    this.#height = resizeTexture ? data.height : this.#height;
++    this.#width = data.width;
++    this.#capacity = capacity;
++    this.#stride = data.instanceStride;
++    this.#snapshot = data.geometry;
++    this.data = data;
++    this.rows = data.rows;
++    return changed;
++  }
++  destroy() {
++    if (this.#destroyed) return;
++    this.#destroyed = true;
++    this.texture?.destroy();
++    this.buffer?.destroy();
++    this.sampler.destroy();
++    this.constants.release();
++    this.#snapshot = undefined;
++    this.data = undefined;
++  }
++}
+diff --git a/scripts/camera-replay-tools.mjs b/scripts/camera-replay-tools.mjs
+index 4117db1..728d917 100644
+--- a/scripts/camera-replay-tools.mjs
++++ b/scripts/camera-replay-tools.mjs
+@@ -1,3 +1,7 @@
++import {
++  sameStrokeTextureScope,
++  qualifyStrokeTexture,
++} from './stroke-texture-bench-tools.mjs';
+ import { createHash } from 'node:crypto';
+ import assert from 'node:assert/strict';
+ export function cameraTraceHash(workload, trace, viewport) {
+@@ -173,6 +177,7 @@ function rows(capture) {
+     }
+   }
+   assert(out.size > 0, 'Missing replay results');
++  qualifyStrokeTexture(capture);
+   return out;
+ }
+ export function summarizeReplay(capture) {
+@@ -221,6 +226,7 @@ export function compareReplays(
+   after,
+   { requireNativeParity = false } = {},
+ ) {
++  sameStrokeTextureScope(before, after);
+   for (const key of ['workload', 'traceHash', 'browser', 'node', 'viewport'])
+     assert.deepEqual(before[key], after[key], `Capture ${key} differs`);
+   const a = rows(before),
+diff --git a/scripts/camera-replay.bench.spec.ts b/scripts/camera-replay.bench.spec.ts
+index 340628d..c6c1b5b 100644
+--- a/scripts/camera-replay.bench.spec.ts
++++ b/scripts/camera-replay.bench.spec.ts
+@@ -1,3 +1,5 @@
++import { strokeTextureMode } from './stroke-texture-bench-tools.mjs';
++import { installTextureTransfers } from '../__tests__/browser/fixtures/texture-transfer-probe';
+ import {
+   strokeUploadMode,
+   summarizeStrokeUploads,
+@@ -27,11 +29,13 @@ declare global {
+ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
+   const phaseMode = cameraPhaseMode();
+   const uploadMode = strokeUploadMode();
++  const textureMode = strokeTextureMode();
+   const git = (...args: string[]) =>
+     execFileSync('git', args, { encoding: 'utf8' }).trim();
+   const trace = fixedCameraTrace('strokes'),
+     viewport = { width: 1000, height: 760, dpr: 1 };
+   const capture = {
++    strokeTexture: textureMode,
+     schema: CAMERA_REPLAY_VERSION,
+     mode: uploadMode
+       ? 'stroke-upload-diagnostic'
+@@ -67,15 +71,26 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
+     let timeline: Awaited<ReturnType<typeof startCameraTimeline>>;
+     try {
+       if (uploadMode) await installStrokeUploadProbe(page);
++      if (textureMode !== undefined)
++        await page.addInitScript(installTextureTransfers);
+       await page.addInitScript(installProbes, { resourceStacks: false });
+       await page.goto(
+         (backend === 'core'
+           ? '/core-path-instances.html'
+-          : '/polyline-lod.html') + (phaseMode ? '?cameraPhases=1' : ''),
++          : '/polyline-lod.html') +
++          (phaseMode ? '?cameraPhases=1' : '') +
++          (textureMode === undefined
++            ? ''
++            : `?strokeTexture=${Number(textureMode)}`),
+       );
+       await expect(page.locator('#status')).toHaveText('Ready');
+       await page.evaluate(
+-        async ({ backend, nodes }) => {
++        async ({ backend, nodes, textureMode }) => {
++          if (textureMode !== undefined) {
++            if (backend === 'core')
++              window.corePathInstances.strokeTexture(textureMode);
++            else await window.polylineLOD.strokeTexture(textureMode);
++          }
+           if (backend === 'core') {
+             window.corePathInstances.strokes(nodes.length);
+             window.corePathInstances.enable(true);
+@@ -86,7 +101,7 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
+             await window.polylineLOD.zoom(0.13);
+           }
+         },
+-        { backend, nodes: replayStrokeNodes(2400) },
++        { backend, nodes: replayStrokeNodes(2400), textureMode },
+       );
+       const document = await page.evaluate(
+         (b) =>
+@@ -102,6 +117,7 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
+         documentSame: false,
+         teardown: 'pending',
+         uploadProbeRestored: undefined as boolean | undefined,
++        textureProbeRestored: undefined as boolean | undefined,
+       };
+       capture.results.push(result);
+       timeline = await startCameraTimeline(page, backend);
+@@ -176,6 +192,12 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
+           await page.evaluate(() => window.lifecycleProbes.leaks()),
+         ).toEqual([]);
+       expect(errors).toEqual([]);
++      if (textureMode !== undefined) {
++        result.textureProbeRestored = await page.evaluate(() =>
++          window.textureTransfers!.dispose(),
++        );
++        expect(result.textureProbeRestored).toBe(true);
++      }
+       result.teardown = 'passed';
+       save();
+     } finally {
+diff --git a/scripts/stroke-texture-bench-tools.mjs b/scripts/stroke-texture-bench-tools.mjs
+new file mode 100644
+index 0000000..9740490
+--- /dev/null
++++ b/scripts/stroke-texture-bench-tools.mjs
+@@ -0,0 +1,83 @@
++import assert from 'node:assert/strict';
++export function strokeTextureMode(env = process.env) {
++  const v = env.STROKE_TEXTURE_BENCH;
++  assert(
++    v === undefined || v === '0' || v === '1',
++    'STROKE_TEXTURE_BENCH must be 0, 1 or unset',
++  );
++  assert(
++    v === undefined ||
++      (!env.STROKE_UPLOAD_DIAGNOSTIC &&
++        !env.CAMERA_PHASES &&
++        !env.CAMERA_TIMELINE_DIR),
++    'Texture comparison must run separately from diagnostics/phases/timelines',
++  );
++  return v === undefined ? undefined : v === '1';
++}
++/** Extra native observers form their own ordinary timing cohort. */
++export function sameStrokeTextureScope(a, b) {
++  assert.equal(
++    a.strokeTexture !== undefined,
++    b.strokeTexture !== undefined,
++    'Native texture counter scopes differ',
++  );
++}
++export function qualifyStrokeTexture(capture) {
++  const groups = capture.rounds ? [capture] : capture.results;
++  for (const group of groups) {
++    const frames = group.rounds.flatMap((r) =>
++      r.steps.flatMap((s) => s.frames),
++    );
++    if (capture.strokeTexture === undefined) {
++      assert.equal(
++        group.textureProbeRestored,
++        undefined,
++        'Missing texture comparison marker',
++      );
++      assert(
++        frames.every((f) => f.data.textureNative === undefined),
++        'Missing texture comparison marker',
++      );
++      continue;
++    }
++    assert.equal(typeof capture.strokeTexture, 'boolean');
++    assert.equal(
++      group.textureProbeRestored,
++      true,
++      'Texture native observer not restored',
++    );
++    for (const f of frames) {
++      const t = f.data.textureNative;
++      assert(
++        t &&
++          [
++            'creates',
++            'deletes',
++            'uploads',
++            'typedBytes',
++            'domUploads',
++            'offsetUploads',
++            'rgba32fBytesPeak',
++            'rgba32fBytesLive',
++          ].every((k) => Number.isSafeInteger(t[k]) && t[k] >= 0),
++        'Missing native texture counters',
++      );
++      assert(t.rgba32fBytesPeak >= t.rgba32fBytesLive);
++    }
++    if (capture.strokeTexture)
++      assert(
++        frames.some((f) => f.data.textureNative.rgba32fBytesLive > 0),
++        'Texture rendering did not activate',
++      );
++    if (capture.strokeTexture)
++      assert(
++        frames.some((f) => f.data.strokeTexturePages > 0),
++        'Resident stroke draws missing',
++      );
++    else
++      assert(
++        frames.every((f) => (f.data.strokeTexturePages ?? 0) === 0),
++        'Packed control entered texture rendering',
++      );
++  }
++}
+diff --git a/scripts/workflow-input-tools.mjs b/scripts/workflow-input-tools.mjs
+index 45f768f..8a9d22b 100644
+--- a/scripts/workflow-input-tools.mjs
++++ b/scripts/workflow-input-tools.mjs
+@@ -1,3 +1,7 @@
++import {
++  sameStrokeTextureScope,
++  qualifyStrokeTexture,
++} from './stroke-texture-bench-tools.mjs';
+ import assert from 'node:assert/strict';
+ import {
+   cameraTraceHash,
+@@ -234,6 +238,7 @@ function qualify(capture) {
+       ],
+     });
+   }
++  qualifyStrokeTexture(capture);
+ }
+ function summarize(capture) {
+   return capture.rounds.map((round) => {
+@@ -271,6 +276,7 @@ function summarize(capture) {
+ export function compareWorkflowInputs(before, after) {
+   qualify(before);
+   qualify(after);
++  sameStrokeTextureScope(before, after);
+   for (const k of [
+     'schema',
+     'workload',
+diff --git a/scripts/workflow-input.bench.spec.ts b/scripts/workflow-input.bench.spec.ts
+index d5d46f1..84ff64c 100644
+--- a/scripts/workflow-input.bench.spec.ts
++++ b/scripts/workflow-input.bench.spec.ts
+@@ -1,3 +1,5 @@
++import { strokeTextureMode } from './stroke-texture-bench-tools.mjs';
++import { installTextureTransfers } from '../__tests__/browser/fixtures/texture-transfer-probe';
+ import {
+   strokeUploadMode,
+   summarizeStrokeUploads,
+@@ -21,6 +23,7 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
+ }) => {
+   const phaseMode = cameraPhaseMode();
+   const uploadMode = strokeUploadMode();
++  const textureMode = strokeTextureMode();
+   const count = Number(process.env.WORKFLOW_INPUT_COUNT ?? 2400);
+   if (![24, 2400].includes(count))
+     throw new Error('Use 24 for correctness or 2400 for the benchmark');
+@@ -36,8 +39,10 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
+   const git = (...args: string[]) =>
+     execFileSync('git', args, { encoding: 'utf8' }).trim();
+   const capture = {
++    strokeTexture: textureMode,
+     schema: 1,
+     uploadProbeRestored: undefined as boolean | undefined,
++    textureProbeRestored: undefined as boolean | undefined,
+     mode: uploadMode
+       ? 'stroke-upload-diagnostic'
+       : phaseMode
+@@ -71,9 +76,14 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
+   let timeline: Awaited<ReturnType<typeof startCameraTimeline>>;
+   try {
+     if (uploadMode) await installStrokeUploadProbe(page);
++    if (textureMode !== undefined)
++      await page.addInitScript(installTextureTransfers);
+     await page.addInitScript(installProbes, { resourceStacks: false });
+     await page.goto(
+-      phaseMode ? '/?imageBatching=1&cameraPhases=1' : '/?imageBatching=1',
++      (phaseMode ? '/?imageBatching=1&cameraPhases=1' : '/?imageBatching=1') +
++        (textureMode === undefined
++          ? ''
++          : `&strokeTexture=${Number(textureMode)}`),
+     );
+     await page.waitForFunction(() => window.workflowDemo?.snapshot().ready);
+     await page.locator('#scale').selectOption(String(count));
+@@ -262,6 +272,12 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
+       [],
+     );
+     expect(errors).toEqual([]);
++    if (textureMode !== undefined) {
++      capture.textureProbeRestored = await page.evaluate(() =>
++        window.textureTransfers!.dispose(),
++      );
++      expect(capture.textureProbeRestored).toBe(true);
++    }
+     capture.teardown = 'passed';
+     save();
+     for (const round of capture.rounds) {

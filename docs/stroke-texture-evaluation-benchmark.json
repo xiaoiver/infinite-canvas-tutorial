@@ -1,0 +1,2194 @@
+{
+  "audits": [
+    {
+      "workload": "workflow",
+      "comparisons": [
+        {
+          "matchedFrames": 40,
+          "parity": "semantics, call counts, draws, uniforms, other resources"
+        },
+        {
+          "matchedFrames": 40,
+          "parity": "semantics, call counts, draws, uniforms, other resources"
+        },
+        {
+          "matchedFrames": 40,
+          "parity": "semantics, call counts, draws, uniforms, other resources"
+        },
+        {
+          "matchedFrames": 40,
+          "parity": "semantics, call counts, draws, uniforms, other resources"
+        }
+      ],
+      "packedRepeat": {
+        "matchedFrames": 40,
+        "parity": "all recorded work/storage"
+      },
+      "textureRepeat": {
+        "matchedFrames": 40,
+        "parity": "all recorded work/storage"
+      }
+    },
+    {
+      "workload": "strokes",
+      "comparisons": [
+        {
+          "matchedFrames": 48,
+          "parity": "semantics, call counts, draws, uniforms, other resources"
+        },
+        {
+          "matchedFrames": 48,
+          "parity": "semantics, call counts, draws, uniforms, other resources"
+        },
+        {
+          "matchedFrames": 48,
+          "parity": "semantics, call counts, draws, uniforms, other resources"
+        },
+        {
+          "matchedFrames": 48,
+          "parity": "semantics, call counts, draws, uniforms, other resources"
+        }
+      ],
+      "packedRepeat": {
+        "matchedFrames": 48,
+        "parity": "all recorded work/storage"
+      },
+      "textureRepeat": {
+        "matchedFrames": 48,
+        "parity": "all recorded work/storage"
+      }
+    }
+  ],
+  "captures": [
+    {
+      "workload": "workflow",
+      "label": "packed-1",
+      "raw": {
+        "path": "workflow/packed-1/workflow-input.json",
+        "bytes": 2101434,
+        "sha256": "379925e76d90b72ae4e599f99ed1ca43ff6af671f775424ac1144425f523fa2a"
+      },
+      "source": {
+        "head": "080b1071c8c4d7ccf280238465ac09dba580dd1f",
+        "tree": "808d2ed8689c3efe2660b7b717586d3eefacf509",
+        "dirty": false
+      },
+      "strokeTexture": false,
+      "rows": [
+        {
+          "backend": "ecs",
+          "round": 0,
+          "frames": 20,
+          "engine": {
+            "p50": 13.900000000372529,
+            "p95": 99.79999999981374,
+            "max": 127.1000000005588,
+            "total": 730.5000000009313
+          },
+          "inputOrOperation": {
+            "p50": 14.200000000186265,
+            "p95": 100,
+            "max": 127.70000000018626,
+            "total": 737.7000000011176
+          },
+          "readiness": {
+            "p50": 17.200000000186265,
+            "p95": 106.5,
+            "max": 132.29999999981374,
+            "total": 802.4000000003725
+          },
+          "observation": {
+            "p50": 3,
+            "p95": 6.2000000001862645,
+            "max": 7,
+            "total": 63.39999999944121
+          },
+          "native": {
+            "bufferCreates": 119,
+            "bufferDeletes": 119,
+            "bufferAllocations": 119,
+            "drawcalls": 159,
+            "indices": 4194504,
+            "arrayVertices": 80,
+            "bufferUploads": 326,
+            "bufferBytes": 21113128,
+            "uniformUploads": 89,
+            "uniformBytes": 12672
+          },
+          "textureTransfers": {
+            "creates": 0,
+            "deletes": 0,
+            "uploads": 0,
+            "typedBytes": 0,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 21113128,
+          "totalTransferBytes": 21113128,
+          "floatPeak": 0,
+          "floatLive": [0, 0],
+          "bufferLive": [156116, 3322588],
+          "combinedPostFrameLogical": [156116, 3322588],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [14, 68],
+                "Texture": [14, 14],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [0, 0],
+          "visible": [36, 2400],
+          "drawcalls": [3, 22],
+          "indices": [15516, 633846],
+          "arrayVertices": [4, 4]
+        },
+        {
+          "backend": "ecs",
+          "round": 1,
+          "frames": 20,
+          "engine": {
+            "p50": 13.799999999813735,
+            "p95": 64.20000000018626,
+            "max": 66.70000000018626,
+            "total": 492.1999999983236
+          },
+          "inputOrOperation": {
+            "p50": 13.799999999813735,
+            "p95": 64.5,
+            "max": 67,
+            "total": 497.49999999720603
+          },
+          "readiness": {
+            "p50": 17.100000000558794,
+            "p95": 66.3999999994412,
+            "max": 69.19999999925494,
+            "total": 548.4999999990687
+          },
+          "observation": {
+            "p50": 2.2000000001862645,
+            "p95": 3.6000000005587935,
+            "max": 5.400000000372529,
+            "total": 50.70000000111759
+          },
+          "native": {
+            "bufferCreates": 81,
+            "bufferDeletes": 81,
+            "bufferAllocations": 81,
+            "drawcalls": 159,
+            "indices": 4201764,
+            "arrayVertices": 80,
+            "bufferUploads": 326,
+            "bufferBytes": 21147976,
+            "uniformUploads": 89,
+            "uniformBytes": 12672
+          },
+          "textureTransfers": {
+            "creates": 0,
+            "deletes": 0,
+            "uploads": 0,
+            "typedBytes": 0,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 21147976,
+          "totalTransferBytes": 21147976,
+          "floatPeak": 0,
+          "floatLive": [0, 0],
+          "bufferLive": [156116, 3322588],
+          "combinedPostFrameLogical": [156116, 3322588],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [14, 68],
+                "Texture": [14, 14],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [0, 0],
+          "visible": [36, 2400],
+          "drawcalls": [3, 22],
+          "indices": [15516, 633846],
+          "arrayVertices": [4, 4]
+        }
+      ]
+    },
+    {
+      "workload": "workflow",
+      "label": "texture-1",
+      "raw": {
+        "path": "workflow/texture-1/workflow-input.json",
+        "bytes": 2101797,
+        "sha256": "8d2f6ae3d00f912f77b502d9b002927ae343853305e16e62d1c19a5c8696ba98"
+      },
+      "source": {
+        "head": "080b1071c8c4d7ccf280238465ac09dba580dd1f",
+        "tree": "808d2ed8689c3efe2660b7b717586d3eefacf509",
+        "dirty": false
+      },
+      "strokeTexture": true,
+      "rows": [
+        {
+          "backend": "ecs",
+          "round": 0,
+          "frames": 20,
+          "engine": {
+            "p50": 18.5,
+            "p95": 88.09999999962747,
+            "max": 166.40000000037253,
+            "total": 772.9999999990687
+          },
+          "inputOrOperation": {
+            "p50": 18.600000000558794,
+            "p95": 88.3999999994412,
+            "max": 167,
+            "total": 779.8999999994412
+          },
+          "readiness": {
+            "p50": 21,
+            "p95": 92.29999999981374,
+            "max": 174,
+            "total": 854.2000000011176
+          },
+          "observation": {
+            "p50": 3.300000000745058,
+            "p95": 6.300000000745058,
+            "max": 6.900000000372529,
+            "total": 73.6000000005588
+          },
+          "native": {
+            "bufferCreates": 79,
+            "bufferDeletes": 79,
+            "bufferAllocations": 79,
+            "drawcalls": 159,
+            "indices": 4194504,
+            "arrayVertices": 80,
+            "bufferUploads": 257,
+            "bufferBytes": 9077104,
+            "uniformUploads": 89,
+            "uniformBytes": 12672
+          },
+          "textureTransfers": {
+            "creates": 33,
+            "deletes": 33,
+            "uploads": 69,
+            "typedBytes": 5386240,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 14463344,
+          "totalTransferBytes": 14463344,
+          "floatPeak": 851968,
+          "floatLive": [36864, 823296],
+          "bufferLive": [73748, 1412636],
+          "combinedPostFrameLogical": [110612, 2235932],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [13, 58],
+                "Texture": [15, 24],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [1, 10],
+          "visible": [36, 2400],
+          "drawcalls": [3, 22],
+          "indices": [15516, 633846],
+          "arrayVertices": [4, 4]
+        },
+        {
+          "backend": "ecs",
+          "round": 1,
+          "frames": 20,
+          "engine": {
+            "p50": 18.699999999254942,
+            "p95": 78.5,
+            "max": 79.5,
+            "total": 584.7999999988824
+          },
+          "inputOrOperation": {
+            "p50": 18.899999999441206,
+            "p95": 78.69999999925494,
+            "max": 79.70000000018626,
+            "total": 596.1999999973923
+          },
+          "readiness": {
+            "p50": 21.59999999962747,
+            "p95": 82.40000000037253,
+            "max": 82.5,
+            "total": 661.0999999977648
+          },
+          "observation": {
+            "p50": 2.7000000001862645,
+            "p95": 3.800000000745058,
+            "max": 9.799999999813735,
+            "total": 63.29999999795109
+          },
+          "native": {
+            "bufferCreates": 60,
+            "bufferDeletes": 60,
+            "bufferAllocations": 60,
+            "drawcalls": 159,
+            "indices": 4201764,
+            "arrayVertices": 80,
+            "bufferUploads": 257,
+            "bufferBytes": 9090656,
+            "uniformUploads": 89,
+            "uniformBytes": 12672
+          },
+          "textureTransfers": {
+            "creates": 21,
+            "deletes": 21,
+            "uploads": 69,
+            "typedBytes": 5447680,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 14538336,
+          "totalTransferBytes": 14538336,
+          "floatPeak": 843776,
+          "floatLive": [36864, 823296],
+          "bufferLive": [73748, 1412636],
+          "combinedPostFrameLogical": [110612, 2235932],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [13, 58],
+                "Texture": [15, 24],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [1, 10],
+          "visible": [36, 2400],
+          "drawcalls": [3, 22],
+          "indices": [15516, 633846],
+          "arrayVertices": [4, 4]
+        }
+      ]
+    },
+    {
+      "workload": "workflow",
+      "label": "texture-2",
+      "raw": {
+        "path": "workflow/texture-2/workflow-input.json",
+        "bytes": 2102049,
+        "sha256": "eba7a9061b35c59f67da4a1179f77c61eac1b9664c4a4b1a20e718501834a200"
+      },
+      "source": {
+        "head": "080b1071c8c4d7ccf280238465ac09dba580dd1f",
+        "tree": "808d2ed8689c3efe2660b7b717586d3eefacf509",
+        "dirty": false
+      },
+      "strokeTexture": true,
+      "rows": [
+        {
+          "backend": "ecs",
+          "round": 0,
+          "frames": 20,
+          "engine": {
+            "p50": 12.900000000372529,
+            "p95": 67.3999999994412,
+            "max": 106.09999999962747,
+            "total": 574.7999999988824
+          },
+          "inputOrOperation": {
+            "p50": 15,
+            "p95": 67.59999999962747,
+            "max": 107.59999999962747,
+            "total": 598.8999999985099
+          },
+          "readiness": {
+            "p50": 17.699999999254942,
+            "p95": 70.29999999981374,
+            "max": 111.40000000037253,
+            "total": 664.6999999983236
+          },
+          "observation": {
+            "p50": 3,
+            "p95": 5.400000000372529,
+            "max": 7.2999999998137355,
+            "total": 64.59999999962747
+          },
+          "native": {
+            "bufferCreates": 79,
+            "bufferDeletes": 79,
+            "bufferAllocations": 79,
+            "drawcalls": 159,
+            "indices": 4194504,
+            "arrayVertices": 80,
+            "bufferUploads": 257,
+            "bufferBytes": 9077104,
+            "uniformUploads": 89,
+            "uniformBytes": 12672
+          },
+          "textureTransfers": {
+            "creates": 33,
+            "deletes": 33,
+            "uploads": 69,
+            "typedBytes": 5386240,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 14463344,
+          "totalTransferBytes": 14463344,
+          "floatPeak": 851968,
+          "floatLive": [36864, 823296],
+          "bufferLive": [73748, 1412636],
+          "combinedPostFrameLogical": [110612, 2235932],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [13, 58],
+                "Texture": [15, 24],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [1, 10],
+          "visible": [36, 2400],
+          "drawcalls": [3, 22],
+          "indices": [15516, 633846],
+          "arrayVertices": [4, 4]
+        },
+        {
+          "backend": "ecs",
+          "round": 1,
+          "frames": 20,
+          "engine": {
+            "p50": 18.299999999813735,
+            "p95": 60.90000000037253,
+            "max": 62.40000000037253,
+            "total": 463.10000000242144
+          },
+          "inputOrOperation": {
+            "p50": 19.799999999813735,
+            "p95": 61,
+            "max": 62.700000000186265,
+            "total": 473.90000000037253
+          },
+          "readiness": {
+            "p50": 21.600000000558794,
+            "p95": 63.299999999813735,
+            "max": 65,
+            "total": 520.4000000013039
+          },
+          "observation": {
+            "p50": 2,
+            "p95": 3.599999999627471,
+            "max": 4.5,
+            "total": 45.59999999869615
+          },
+          "native": {
+            "bufferCreates": 60,
+            "bufferDeletes": 60,
+            "bufferAllocations": 60,
+            "drawcalls": 159,
+            "indices": 4201764,
+            "arrayVertices": 80,
+            "bufferUploads": 257,
+            "bufferBytes": 9090656,
+            "uniformUploads": 89,
+            "uniformBytes": 12672
+          },
+          "textureTransfers": {
+            "creates": 21,
+            "deletes": 21,
+            "uploads": 69,
+            "typedBytes": 5447680,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 14538336,
+          "totalTransferBytes": 14538336,
+          "floatPeak": 843776,
+          "floatLive": [36864, 823296],
+          "bufferLive": [73748, 1412636],
+          "combinedPostFrameLogical": [110612, 2235932],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [13, 58],
+                "Texture": [15, 24],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [1, 10],
+          "visible": [36, 2400],
+          "drawcalls": [3, 22],
+          "indices": [15516, 633846],
+          "arrayVertices": [4, 4]
+        }
+      ]
+    },
+    {
+      "workload": "workflow",
+      "label": "packed-2",
+      "raw": {
+        "path": "workflow/packed-2/workflow-input.json",
+        "bytes": 2101325,
+        "sha256": "232ce9ab42a121a6ae6598a5f6d77448138d4a8820310124639802fcf3cf25b5"
+      },
+      "source": {
+        "head": "080b1071c8c4d7ccf280238465ac09dba580dd1f",
+        "tree": "808d2ed8689c3efe2660b7b717586d3eefacf509",
+        "dirty": false
+      },
+      "strokeTexture": false,
+      "rows": [
+        {
+          "backend": "ecs",
+          "round": 0,
+          "frames": 20,
+          "engine": {
+            "p50": 17,
+            "p95": 82.8999999994412,
+            "max": 149.20000000018626,
+            "total": 664.7000000020489
+          },
+          "inputOrOperation": {
+            "p50": 17.200000000186265,
+            "p95": 83,
+            "max": 149.6000000005588,
+            "total": 671.800000003539
+          },
+          "readiness": {
+            "p50": 20.09999999962747,
+            "p95": 85.80000000074506,
+            "max": 154.5,
+            "total": 720.1000000024214
+          },
+          "observation": {
+            "p50": 2.099999999627471,
+            "p95": 3.1000000005587935,
+            "max": 4.7999999998137355,
+            "total": 47.60000000055879
+          },
+          "native": {
+            "bufferCreates": 119,
+            "bufferDeletes": 119,
+            "bufferAllocations": 119,
+            "drawcalls": 159,
+            "indices": 4194504,
+            "arrayVertices": 80,
+            "bufferUploads": 326,
+            "bufferBytes": 21113128,
+            "uniformUploads": 89,
+            "uniformBytes": 12672
+          },
+          "textureTransfers": {
+            "creates": 0,
+            "deletes": 0,
+            "uploads": 0,
+            "typedBytes": 0,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 21113128,
+          "totalTransferBytes": 21113128,
+          "floatPeak": 0,
+          "floatLive": [0, 0],
+          "bufferLive": [156116, 3322588],
+          "combinedPostFrameLogical": [156116, 3322588],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [14, 68],
+                "Texture": [14, 14],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [0, 0],
+          "visible": [36, 2400],
+          "drawcalls": [3, 22],
+          "indices": [15516, 633846],
+          "arrayVertices": [4, 4]
+        },
+        {
+          "backend": "ecs",
+          "round": 1,
+          "frames": 20,
+          "engine": {
+            "p50": 13.100000000558794,
+            "p95": 70.70000000018626,
+            "max": 72.09999999962747,
+            "total": 516
+          },
+          "inputOrOperation": {
+            "p50": 14.800000000745058,
+            "p95": 70.90000000037253,
+            "max": 72.29999999981374,
+            "total": 522.2000000020489
+          },
+          "readiness": {
+            "p50": 17.700000000186265,
+            "p95": 74.5,
+            "max": 75.70000000018626,
+            "total": 580.3000000007451
+          },
+          "observation": {
+            "p50": 2.5,
+            "p95": 6,
+            "max": 6.599999999627471,
+            "total": 57.399999998509884
+          },
+          "native": {
+            "bufferCreates": 81,
+            "bufferDeletes": 81,
+            "bufferAllocations": 81,
+            "drawcalls": 159,
+            "indices": 4201764,
+            "arrayVertices": 80,
+            "bufferUploads": 326,
+            "bufferBytes": 21147976,
+            "uniformUploads": 89,
+            "uniformBytes": 12672
+          },
+          "textureTransfers": {
+            "creates": 0,
+            "deletes": 0,
+            "uploads": 0,
+            "typedBytes": 0,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 21147976,
+          "totalTransferBytes": 21147976,
+          "floatPeak": 0,
+          "floatLive": [0, 0],
+          "bufferLive": [156116, 3322588],
+          "combinedPostFrameLogical": [156116, 3322588],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [14, 68],
+                "Texture": [14, 14],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [0, 0],
+          "visible": [36, 2400],
+          "drawcalls": [3, 22],
+          "indices": [15516, 633846],
+          "arrayVertices": [4, 4]
+        }
+      ]
+    },
+    {
+      "workload": "strokes",
+      "label": "packed-1",
+      "raw": {
+        "path": "strokes/packed-1/camera-replay-strokes.json",
+        "bytes": 2143691,
+        "sha256": "2b6feed14f9bc093d76413eca3c1dfc086540407c45279581578c0df3b7d599b"
+      },
+      "source": {
+        "head": "080b1071c8c4d7ccf280238465ac09dba580dd1f",
+        "tree": "808d2ed8689c3efe2660b7b717586d3eefacf509",
+        "dirty": false
+      },
+      "strokeTexture": false,
+      "rows": [
+        {
+          "backend": "core",
+          "round": 0,
+          "frames": 12,
+          "engine": {
+            "p50": 5.8999999994412065,
+            "p95": 66.40000000037253,
+            "max": 66.40000000037253,
+            "total": 191.59999999869615
+          },
+          "inputOrOperation": {
+            "p50": 5.8999999994412065,
+            "p95": 66.40000000037253,
+            "max": 66.40000000037253,
+            "total": 191.69999999832362
+          },
+          "readiness": {
+            "p50": 6,
+            "p95": 66.59999999962747,
+            "max": 66.59999999962747,
+            "total": 194.59999999776483
+          },
+          "observation": {
+            "p50": 0.19999999925494194,
+            "p95": 0.6000000005587935,
+            "max": 0.6000000005587935,
+            "total": 2.8999999994412065
+          },
+          "native": {
+            "bufferCreates": 65,
+            "bufferDeletes": 65,
+            "bufferAllocations": 65,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 125,
+            "bufferBytes": 15208704,
+            "uniformUploads": 47,
+            "uniformBytes": 5984,
+            "arrayBufferBinds": 440,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 393
+          },
+          "textureTransfers": {
+            "creates": 0,
+            "deletes": 0,
+            "uploads": 0,
+            "typedBytes": 0,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 15208704,
+          "totalTransferBytes": 15208704,
+          "floatPeak": 0,
+          "floatLive": [0, 0],
+          "resources": [
+            {
+              "side": "core",
+              "live": {
+                "Buffer": [3, 35],
+                "Texture": [7, 7],
+                "Program": [3, 3],
+                "Shader": [6, 6],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [3, 3]
+              }
+            }
+          ],
+          "textureDraws": [0, 0],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        },
+        {
+          "backend": "core",
+          "round": 1,
+          "frames": 12,
+          "engine": {
+            "p50": 3.6000000005587935,
+            "p95": 15.900000000372529,
+            "max": 15.900000000372529,
+            "total": 61.60000000335276
+          },
+          "inputOrOperation": {
+            "p50": 3.6000000005587935,
+            "p95": 15.900000000372529,
+            "max": 15.900000000372529,
+            "total": 61.60000000335276
+          },
+          "readiness": {
+            "p50": 3.7000000001862645,
+            "p95": 16.100000000558794,
+            "max": 16.100000000558794,
+            "total": 63.500000001862645
+          },
+          "observation": {
+            "p50": 0.19999999925494194,
+            "p95": 0.20000000018626451,
+            "max": 0.20000000018626451,
+            "total": 1.8999999985098839
+          },
+          "native": {
+            "bufferCreates": 67,
+            "bufferDeletes": 67,
+            "bufferAllocations": 67,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 125,
+            "bufferBytes": 15208704,
+            "uniformUploads": 47,
+            "uniformBytes": 5984,
+            "arrayBufferBinds": 442,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 393
+          },
+          "textureTransfers": {
+            "creates": 0,
+            "deletes": 0,
+            "uploads": 0,
+            "typedBytes": 0,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 15208704,
+          "totalTransferBytes": 15208704,
+          "floatPeak": 0,
+          "floatLive": [0, 0],
+          "resources": [
+            {
+              "side": "core",
+              "live": {
+                "Buffer": [3, 35],
+                "Texture": [7, 7],
+                "Program": [3, 3],
+                "Shader": [6, 6],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [3, 3]
+              }
+            }
+          ],
+          "textureDraws": [0, 0],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        },
+        {
+          "backend": "ecs",
+          "round": 0,
+          "frames": 12,
+          "engine": {
+            "p50": 10.899999999441206,
+            "p95": 112.09999999962747,
+            "max": 112.09999999962747,
+            "total": 331.59999999962747
+          },
+          "inputOrOperation": {
+            "p50": 18.399999999441206,
+            "p95": 126.70000000018626,
+            "max": 126.70000000018626,
+            "total": 426.80000000074506
+          },
+          "readiness": {
+            "p50": 18.799999999813735,
+            "p95": 127.40000000037253,
+            "max": 127.40000000037253,
+            "total": 435.30000000074506
+          },
+          "observation": {
+            "p50": 0.599999999627471,
+            "p95": 1.7000000001862645,
+            "max": 1.7000000001862645,
+            "total": 8
+          },
+          "native": {
+            "bufferCreates": 65,
+            "bufferDeletes": 65,
+            "bufferAllocations": 65,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 116,
+            "bufferBytes": 17108488,
+            "uniformUploads": 38,
+            "uniformBytes": 5440,
+            "arrayBufferBinds": 440,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 393
+          },
+          "textureTransfers": {
+            "creates": 0,
+            "deletes": 0,
+            "uploads": 0,
+            "typedBytes": 0,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 17108488,
+          "totalTransferBytes": 17108488,
+          "floatPeak": 0,
+          "floatLive": [0, 0],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "lod",
+              "live": {
+                "Buffer": [3, 35],
+                "Texture": [7, 7],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [0, 0],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        },
+        {
+          "backend": "ecs",
+          "round": 1,
+          "frames": 12,
+          "engine": {
+            "p50": 11.599999999627471,
+            "p95": 54.200000000186265,
+            "max": 54.200000000186265,
+            "total": 193.6000000005588
+          },
+          "inputOrOperation": {
+            "p50": 16.700000000186265,
+            "p95": 54.700000000186265,
+            "max": 54.700000000186265,
+            "total": 263.1000000014901
+          },
+          "readiness": {
+            "p50": 17.09999999962747,
+            "p95": 55.39999999944121,
+            "max": 55.39999999944121,
+            "total": 269.4999999990687
+          },
+          "observation": {
+            "p50": 0.40000000037252903,
+            "p95": 0.7999999998137355,
+            "max": 0.7999999998137355,
+            "total": 5.799999998882413
+          },
+          "native": {
+            "bufferCreates": 67,
+            "bufferDeletes": 67,
+            "bufferAllocations": 67,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 116,
+            "bufferBytes": 17108488,
+            "uniformUploads": 38,
+            "uniformBytes": 5440,
+            "arrayBufferBinds": 442,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 393
+          },
+          "textureTransfers": {
+            "creates": 0,
+            "deletes": 0,
+            "uploads": 0,
+            "typedBytes": 0,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 17108488,
+          "totalTransferBytes": 17108488,
+          "floatPeak": 0,
+          "floatLive": [0, 0],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "lod",
+              "live": {
+                "Buffer": [3, 35],
+                "Texture": [7, 7],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [0, 0],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        }
+      ]
+    },
+    {
+      "workload": "strokes",
+      "label": "texture-1",
+      "raw": {
+        "path": "strokes/texture-1/camera-replay-strokes.json",
+        "bytes": 2144413,
+        "sha256": "b210ae9b39b2f6c137378fb85923c6c4dd02c769a93f4d34081589a517d0a3b6"
+      },
+      "source": {
+        "head": "080b1071c8c4d7ccf280238465ac09dba580dd1f",
+        "tree": "808d2ed8689c3efe2660b7b717586d3eefacf509",
+        "dirty": false
+      },
+      "strokeTexture": true,
+      "rows": [
+        {
+          "backend": "core",
+          "round": 0,
+          "frames": 12,
+          "engine": {
+            "p50": 4,
+            "p95": 48,
+            "max": 48,
+            "total": 125.3999999994412
+          },
+          "inputOrOperation": {
+            "p50": 4,
+            "p95": 48,
+            "max": 48,
+            "total": 125.3999999994412
+          },
+          "readiness": {
+            "p50": 4.099999999627471,
+            "p95": 48.19999999925494,
+            "max": 48.19999999925494,
+            "total": 127.79999999981374
+          },
+          "observation": {
+            "p50": 0.20000000018626451,
+            "p95": 0.5,
+            "max": 0.5,
+            "total": 2.400000000372529
+          },
+          "native": {
+            "bufferCreates": 42,
+            "bufferDeletes": 42,
+            "bufferAllocations": 42,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 87,
+            "bufferBytes": 4756900,
+            "uniformUploads": 47,
+            "uniformBytes": 5984,
+            "arrayBufferBinds": 225,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 201
+          },
+          "textureTransfers": {
+            "creates": 21,
+            "deletes": 21,
+            "uploads": 27,
+            "typedBytes": 2887680,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 7644580,
+          "totalTransferBytes": 7644580,
+          "floatPeak": 1212416,
+          "floatLive": [0, 1212416],
+          "resources": [
+            {
+              "side": "core",
+              "live": {
+                "Buffer": [3, 25],
+                "Texture": [7, 17],
+                "Program": [3, 3],
+                "Shader": [6, 6],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [3, 3]
+              }
+            }
+          ],
+          "textureDraws": [0, 10],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        },
+        {
+          "backend": "core",
+          "round": 1,
+          "frames": 12,
+          "engine": {
+            "p50": 5.599999999627471,
+            "p95": 16.799999999813735,
+            "max": 16.799999999813735,
+            "total": 70.40000000223517
+          },
+          "inputOrOperation": {
+            "p50": 5.599999999627471,
+            "p95": 16.799999999813735,
+            "max": 16.799999999813735,
+            "total": 70.40000000223517
+          },
+          "readiness": {
+            "p50": 5.699999999254942,
+            "p95": 17,
+            "max": 17,
+            "total": 72.1000000005588
+          },
+          "observation": {
+            "p50": 0.10000000055879354,
+            "p95": 0.2999999998137355,
+            "max": 0.2999999998137355,
+            "total": 1.6999999983236194
+          },
+          "native": {
+            "bufferCreates": 43,
+            "bufferDeletes": 43,
+            "bufferAllocations": 43,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 87,
+            "bufferBytes": 4756900,
+            "uniformUploads": 47,
+            "uniformBytes": 5984,
+            "arrayBufferBinds": 226,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 201
+          },
+          "textureTransfers": {
+            "creates": 22,
+            "deletes": 22,
+            "uploads": 27,
+            "typedBytes": 2879488,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 7636388,
+          "totalTransferBytes": 7636388,
+          "floatPeak": 1208320,
+          "floatLive": [0, 1208320],
+          "resources": [
+            {
+              "side": "core",
+              "live": {
+                "Buffer": [3, 25],
+                "Texture": [7, 17],
+                "Program": [3, 3],
+                "Shader": [6, 6],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [3, 3]
+              }
+            }
+          ],
+          "textureDraws": [0, 10],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        },
+        {
+          "backend": "ecs",
+          "round": 0,
+          "frames": 12,
+          "engine": {
+            "p50": 19.700000000186265,
+            "p95": 81.6000000005588,
+            "max": 81.6000000005588,
+            "total": 424.4999999990687
+          },
+          "inputOrOperation": {
+            "p50": 30.699999999254942,
+            "p95": 95.90000000037253,
+            "max": 95.90000000037253,
+            "total": 535.7999999988824
+          },
+          "readiness": {
+            "p50": 31.59999999962747,
+            "p95": 96.70000000018626,
+            "max": 96.70000000018626,
+            "total": 548.9000000003725
+          },
+          "observation": {
+            "p50": 0.6000000005587935,
+            "p95": 3.7000000001862645,
+            "max": 3.7000000001862645,
+            "total": 12.20000000204891
+          },
+          "native": {
+            "bufferCreates": 42,
+            "bufferDeletes": 42,
+            "bufferAllocations": 42,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 78,
+            "bufferBytes": 6656684,
+            "uniformUploads": 38,
+            "uniformBytes": 5440,
+            "arrayBufferBinds": 129,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 201
+          },
+          "textureTransfers": {
+            "creates": 21,
+            "deletes": 21,
+            "uploads": 27,
+            "typedBytes": 2912256,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 9568940,
+          "totalTransferBytes": 9568940,
+          "floatPeak": 1224704,
+          "floatLive": [0, 1224704],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "lod",
+              "live": {
+                "Buffer": [3, 25],
+                "Texture": [7, 17],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [0, 10],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        },
+        {
+          "backend": "ecs",
+          "round": 1,
+          "frames": 12,
+          "engine": {
+            "p50": 12.899999999441206,
+            "p95": 72.8999999994412,
+            "max": 72.8999999994412,
+            "total": 274.8999999994412
+          },
+          "inputOrOperation": {
+            "p50": 18.700000000186265,
+            "p95": 81.79999999981374,
+            "max": 81.79999999981374,
+            "total": 345.59999999962747
+          },
+          "readiness": {
+            "p50": 19.399999999441206,
+            "p95": 83.90000000037253,
+            "max": 83.90000000037253,
+            "total": 354.6000000005588
+          },
+          "observation": {
+            "p50": 0.599999999627471,
+            "p95": 1.900000000372529,
+            "max": 1.900000000372529,
+            "total": 8.299999999813735
+          },
+          "native": {
+            "bufferCreates": 43,
+            "bufferDeletes": 43,
+            "bufferAllocations": 43,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 78,
+            "bufferBytes": 6656684,
+            "uniformUploads": 38,
+            "uniformBytes": 5440,
+            "arrayBufferBinds": 130,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 201
+          },
+          "textureTransfers": {
+            "creates": 22,
+            "deletes": 22,
+            "uploads": 27,
+            "typedBytes": 2879488,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 9536172,
+          "totalTransferBytes": 9536172,
+          "floatPeak": 1208320,
+          "floatLive": [0, 1208320],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "lod",
+              "live": {
+                "Buffer": [3, 25],
+                "Texture": [7, 17],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [0, 10],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        }
+      ]
+    },
+    {
+      "workload": "strokes",
+      "label": "texture-2",
+      "raw": {
+        "path": "strokes/texture-2/camera-replay-strokes.json",
+        "bytes": 2144535,
+        "sha256": "3dbd0cce94a37c30ee56106cb51e382bfb6971ee8cc5c21d9d4e901dbed97e18"
+      },
+      "source": {
+        "head": "080b1071c8c4d7ccf280238465ac09dba580dd1f",
+        "tree": "808d2ed8689c3efe2660b7b717586d3eefacf509",
+        "dirty": false
+      },
+      "strokeTexture": true,
+      "rows": [
+        {
+          "backend": "core",
+          "round": 0,
+          "frames": 12,
+          "engine": {
+            "p50": 5.699999999254942,
+            "p95": 50.40000000037253,
+            "max": 50.40000000037253,
+            "total": 146.39999999850988
+          },
+          "inputOrOperation": {
+            "p50": 5.699999999254942,
+            "p95": 50.40000000037253,
+            "max": 50.40000000037253,
+            "total": 146.59999999776483
+          },
+          "readiness": {
+            "p50": 5.8999999994412065,
+            "p95": 50.60000000055879,
+            "max": 50.60000000055879,
+            "total": 149.5
+          },
+          "observation": {
+            "p50": 0.20000000018626451,
+            "p95": 0.6000000005587935,
+            "max": 0.6000000005587935,
+            "total": 2.900000002235174
+          },
+          "native": {
+            "bufferCreates": 42,
+            "bufferDeletes": 42,
+            "bufferAllocations": 42,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 87,
+            "bufferBytes": 4756900,
+            "uniformUploads": 47,
+            "uniformBytes": 5984,
+            "arrayBufferBinds": 225,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 201
+          },
+          "textureTransfers": {
+            "creates": 21,
+            "deletes": 21,
+            "uploads": 27,
+            "typedBytes": 2887680,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 7644580,
+          "totalTransferBytes": 7644580,
+          "floatPeak": 1212416,
+          "floatLive": [0, 1212416],
+          "resources": [
+            {
+              "side": "core",
+              "live": {
+                "Buffer": [3, 25],
+                "Texture": [7, 17],
+                "Program": [3, 3],
+                "Shader": [6, 6],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [3, 3]
+              }
+            }
+          ],
+          "textureDraws": [0, 10],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        },
+        {
+          "backend": "core",
+          "round": 1,
+          "frames": 12,
+          "engine": {
+            "p50": 3.7999999998137355,
+            "p95": 15.799999999813735,
+            "max": 15.799999999813735,
+            "total": 63.59999999962747
+          },
+          "inputOrOperation": {
+            "p50": 3.900000000372529,
+            "p95": 15.799999999813735,
+            "max": 15.799999999813735,
+            "total": 63.700000000186265
+          },
+          "readiness": {
+            "p50": 3.900000000372529,
+            "p95": 16,
+            "max": 16,
+            "total": 65.3999999994412
+          },
+          "observation": {
+            "p50": 0.19999999925494194,
+            "p95": 0.20000000018626451,
+            "max": 0.20000000018626451,
+            "total": 1.699999999254942
+          },
+          "native": {
+            "bufferCreates": 43,
+            "bufferDeletes": 43,
+            "bufferAllocations": 43,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 87,
+            "bufferBytes": 4756900,
+            "uniformUploads": 47,
+            "uniformBytes": 5984,
+            "arrayBufferBinds": 226,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 201
+          },
+          "textureTransfers": {
+            "creates": 22,
+            "deletes": 22,
+            "uploads": 27,
+            "typedBytes": 2879488,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 7636388,
+          "totalTransferBytes": 7636388,
+          "floatPeak": 1208320,
+          "floatLive": [0, 1208320],
+          "resources": [
+            {
+              "side": "core",
+              "live": {
+                "Buffer": [3, 25],
+                "Texture": [7, 17],
+                "Program": [3, 3],
+                "Shader": [6, 6],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [3, 3]
+              }
+            }
+          ],
+          "textureDraws": [0, 10],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        },
+        {
+          "backend": "ecs",
+          "round": 0,
+          "frames": 12,
+          "engine": {
+            "p50": 10.800000000745058,
+            "p95": 64.90000000037253,
+            "max": 64.90000000037253,
+            "total": 268.7000000020489
+          },
+          "inputOrOperation": {
+            "p50": 22.799999999813735,
+            "p95": 75.70000000018626,
+            "max": 75.70000000018626,
+            "total": 392.09999999962747
+          },
+          "readiness": {
+            "p50": 24.200000000186265,
+            "p95": 76.29999999981374,
+            "max": 76.29999999981374,
+            "total": 402.29999999981374
+          },
+          "observation": {
+            "p50": 0.5,
+            "p95": 3.3999999994412065,
+            "max": 3.3999999994412065,
+            "total": 9.999999999068677
+          },
+          "native": {
+            "bufferCreates": 42,
+            "bufferDeletes": 42,
+            "bufferAllocations": 42,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 78,
+            "bufferBytes": 6656684,
+            "uniformUploads": 38,
+            "uniformBytes": 5440,
+            "arrayBufferBinds": 129,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 201
+          },
+          "textureTransfers": {
+            "creates": 21,
+            "deletes": 21,
+            "uploads": 27,
+            "typedBytes": 2912256,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 9568940,
+          "totalTransferBytes": 9568940,
+          "floatPeak": 1224704,
+          "floatLive": [0, 1224704],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "lod",
+              "live": {
+                "Buffer": [3, 25],
+                "Texture": [7, 17],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [0, 10],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        },
+        {
+          "backend": "ecs",
+          "round": 1,
+          "frames": 12,
+          "engine": {
+            "p50": 12.799999999813735,
+            "p95": 59.80000000074506,
+            "max": 59.80000000074506,
+            "total": 219.30000000074506
+          },
+          "inputOrOperation": {
+            "p50": 19.600000000558794,
+            "p95": 66.20000000018626,
+            "max": 66.20000000018626,
+            "total": 305.40000000130385
+          },
+          "readiness": {
+            "p50": 20,
+            "p95": 66.8999999994412,
+            "max": 66.8999999994412,
+            "total": 312
+          },
+          "observation": {
+            "p50": 0.5,
+            "p95": 0.7999999998137355,
+            "max": 0.7999999998137355,
+            "total": 6.199999998323619
+          },
+          "native": {
+            "bufferCreates": 43,
+            "bufferDeletes": 43,
+            "bufferAllocations": 43,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 78,
+            "bufferBytes": 6656684,
+            "uniformUploads": 38,
+            "uniformBytes": 5440,
+            "arrayBufferBinds": 130,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 201
+          },
+          "textureTransfers": {
+            "creates": 22,
+            "deletes": 22,
+            "uploads": 27,
+            "typedBytes": 2879488,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 9536172,
+          "totalTransferBytes": 9536172,
+          "floatPeak": 1208320,
+          "floatLive": [0, 1208320],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "lod",
+              "live": {
+                "Buffer": [3, 25],
+                "Texture": [7, 17],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [0, 10],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        }
+      ]
+    },
+    {
+      "workload": "strokes",
+      "label": "packed-2",
+      "raw": {
+        "path": "strokes/packed-2/camera-replay-strokes.json",
+        "bytes": 2143745,
+        "sha256": "5f7c0697b73b27a3dbe15c6fd4fbcd2ba1d04973ac230daf5d4e45d2c524f209"
+      },
+      "source": {
+        "head": "080b1071c8c4d7ccf280238465ac09dba580dd1f",
+        "tree": "808d2ed8689c3efe2660b7b717586d3eefacf509",
+        "dirty": false
+      },
+      "strokeTexture": false,
+      "rows": [
+        {
+          "backend": "core",
+          "round": 0,
+          "frames": 12,
+          "engine": {
+            "p50": 5.6000000005587935,
+            "p95": 43.700000000186265,
+            "max": 43.700000000186265,
+            "total": 136.40000000130385
+          },
+          "inputOrOperation": {
+            "p50": 5.7000000001862645,
+            "p95": 43.700000000186265,
+            "max": 43.700000000186265,
+            "total": 136.6000000005588
+          },
+          "readiness": {
+            "p50": 5.900000000372529,
+            "p95": 44.09999999962747,
+            "max": 44.09999999962747,
+            "total": 140.00000000093132
+          },
+          "observation": {
+            "p50": 0.2999999998137355,
+            "p95": 0.5,
+            "max": 0.5,
+            "total": 3.400000000372529
+          },
+          "native": {
+            "bufferCreates": 65,
+            "bufferDeletes": 65,
+            "bufferAllocations": 65,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 125,
+            "bufferBytes": 15208704,
+            "uniformUploads": 47,
+            "uniformBytes": 5984,
+            "arrayBufferBinds": 440,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 393
+          },
+          "textureTransfers": {
+            "creates": 0,
+            "deletes": 0,
+            "uploads": 0,
+            "typedBytes": 0,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 15208704,
+          "totalTransferBytes": 15208704,
+          "floatPeak": 0,
+          "floatLive": [0, 0],
+          "resources": [
+            {
+              "side": "core",
+              "live": {
+                "Buffer": [3, 35],
+                "Texture": [7, 7],
+                "Program": [3, 3],
+                "Shader": [6, 6],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [3, 3]
+              }
+            }
+          ],
+          "textureDraws": [0, 0],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        },
+        {
+          "backend": "core",
+          "round": 1,
+          "frames": 12,
+          "engine": {
+            "p50": 4.099999999627471,
+            "p95": 12.200000000186265,
+            "max": 12.200000000186265,
+            "total": 57.09999999962747
+          },
+          "inputOrOperation": {
+            "p50": 4.099999999627471,
+            "p95": 12.200000000186265,
+            "max": 12.200000000186265,
+            "total": 57.200000000186265
+          },
+          "readiness": {
+            "p50": 4.2000000001862645,
+            "p95": 12.299999999813735,
+            "max": 12.299999999813735,
+            "total": 58.900000002235174
+          },
+          "observation": {
+            "p50": 0.10000000055879354,
+            "p95": 0.2999999998137355,
+            "max": 0.2999999998137355,
+            "total": 1.7000000020489097
+          },
+          "native": {
+            "bufferCreates": 67,
+            "bufferDeletes": 67,
+            "bufferAllocations": 67,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 125,
+            "bufferBytes": 15208704,
+            "uniformUploads": 47,
+            "uniformBytes": 5984,
+            "arrayBufferBinds": 442,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 393
+          },
+          "textureTransfers": {
+            "creates": 0,
+            "deletes": 0,
+            "uploads": 0,
+            "typedBytes": 0,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 15208704,
+          "totalTransferBytes": 15208704,
+          "floatPeak": 0,
+          "floatLive": [0, 0],
+          "resources": [
+            {
+              "side": "core",
+              "live": {
+                "Buffer": [3, 35],
+                "Texture": [7, 7],
+                "Program": [3, 3],
+                "Shader": [6, 6],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [3, 3]
+              }
+            }
+          ],
+          "textureDraws": [0, 0],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        },
+        {
+          "backend": "ecs",
+          "round": 0,
+          "frames": 12,
+          "engine": {
+            "p50": 14.700000000186265,
+            "p95": 111.20000000018626,
+            "max": 111.20000000018626,
+            "total": 347.6000000014901
+          },
+          "inputOrOperation": {
+            "p50": 23.799999999813735,
+            "p95": 114.59999999962747,
+            "max": 114.59999999962747,
+            "total": 448.40000000037253
+          },
+          "readiness": {
+            "p50": 24.5,
+            "p95": 115.3999999994412,
+            "max": 115.3999999994412,
+            "total": 458.3999999994412
+          },
+          "observation": {
+            "p50": 0.7000000001862645,
+            "p95": 1.3999999994412065,
+            "max": 1.3999999994412065,
+            "total": 9.299999999813735
+          },
+          "native": {
+            "bufferCreates": 65,
+            "bufferDeletes": 65,
+            "bufferAllocations": 65,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 116,
+            "bufferBytes": 17108488,
+            "uniformUploads": 38,
+            "uniformBytes": 5440,
+            "arrayBufferBinds": 440,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 393
+          },
+          "textureTransfers": {
+            "creates": 0,
+            "deletes": 0,
+            "uploads": 0,
+            "typedBytes": 0,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 17108488,
+          "totalTransferBytes": 17108488,
+          "floatPeak": 0,
+          "floatLive": [0, 0],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "lod",
+              "live": {
+                "Buffer": [3, 35],
+                "Texture": [7, 7],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [0, 0],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        },
+        {
+          "backend": "ecs",
+          "round": 1,
+          "frames": 12,
+          "engine": {
+            "p50": 9.800000000745058,
+            "p95": 44.799999999813735,
+            "max": 44.799999999813735,
+            "total": 193.49999999906868
+          },
+          "inputOrOperation": {
+            "p50": 20.100000000558794,
+            "p95": 50.59999999962747,
+            "max": 50.59999999962747,
+            "total": 285.29999999981374
+          },
+          "readiness": {
+            "p50": 20.600000000558794,
+            "p95": 51.19999999925494,
+            "max": 51.19999999925494,
+            "total": 292.60000000242144
+          },
+          "observation": {
+            "p50": 0.6000000005587935,
+            "p95": 0.7999999998137355,
+            "max": 0.7999999998137355,
+            "total": 6.800000000745058
+          },
+          "native": {
+            "bufferCreates": 67,
+            "bufferDeletes": 67,
+            "bufferAllocations": 67,
+            "drawcalls": 57,
+            "indices": 4562115,
+            "arrayVertices": 36,
+            "bufferUploads": 116,
+            "bufferBytes": 17108488,
+            "uniformUploads": 38,
+            "uniformBytes": 5440,
+            "arrayBufferBinds": 442,
+            "elementBufferBinds": 49,
+            "vertexAttribPointers": 393
+          },
+          "textureTransfers": {
+            "creates": 0,
+            "deletes": 0,
+            "uploads": 0,
+            "typedBytes": 0,
+            "domUploads": 0,
+            "offsetUploads": 0
+          },
+          "knownTransferBytes": 17108488,
+          "totalTransferBytes": 17108488,
+          "floatPeak": 0,
+          "floatLive": [0, 0],
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": [1, 1],
+                "Texture": [5, 5],
+                "Program": [0, 0],
+                "Shader": [0, 0],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [0, 0]
+              }
+            },
+            {
+              "side": "lod",
+              "live": {
+                "Buffer": [3, 35],
+                "Texture": [7, 7],
+                "Program": [4, 4],
+                "Shader": [8, 8],
+                "Framebuffer": [6, 6],
+                "Renderbuffer": [0, 0],
+                "VertexArray": [4, 4]
+              }
+            }
+          ],
+          "textureDraws": [0, 0],
+          "visible": [0, 2400],
+          "drawcalls": [0, 11],
+          "indices": [0, 999000],
+          "arrayVertices": [0, 4]
+        }
+      ]
+    }
+  ],
+  "decision": "withheld: no stable ordinary-input improvement; runtime sources restored to d25a6bd",
+  "measuredSource": {
+    "head": "080b1071c8c4d7ccf280238465ac09dba580dd1f",
+    "tree": "808d2ed8689c3efe2660b7b717586d3eefacf509",
+    "base": "d25a6bd8bd6ea6cfddb8b3ae33ac7f88bdf97ca3"
+  },
+  "prototypePatch": {
+    "path": "docs/perf-experiments/stroke-texture.patch",
+    "sha256": "5b044af51e57e70a8668d47f8e6d88f7b6669fa2630a5e05240bb61bcabbc597"
+  }
+}
