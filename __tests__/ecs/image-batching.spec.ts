@@ -8,6 +8,8 @@ import {
   Renderable,
   Filter,
   Children,
+  FractionalIndex,
+  Wireframe,
   Stroke,
   Opacity,
   MaterialDirty,
@@ -310,3 +312,46 @@ it.each([undefined, null, 42, ''])(
     expect(packing.eligibleImageRect(shape.entity)).toBe(false);
   },
 );
+
+import { orderedBatchPagesContract } from '../contracts/ordered-batch-pages';
+orderedBatchPagesContract('ECS image', () => {
+  const batch = manager();
+  batch.setImageBatchingEnabled(true);
+  batch.setPathInstancingEnabled(true);
+  const data = new Map<Entity, Map<unknown, any>>();
+  let previous: Entity[] = [],
+    pages: any[] = [];
+  return {
+    nodes: (count: number) =>
+      Array.from({ length: count }, (_, i) => {
+        const n = rect();
+        n.data.set(FractionalIndex, { value: String(i).padStart(6, '0') });
+        data.set(n.entity, n.data);
+        return n.entity;
+      }),
+    frame: (nodes: Entity[]) => {
+      const visible = new Set(nodes),
+        old = new Set(previous);
+      previous.forEach((n) => {
+        if (!visible.has(n)) batch.remove(n, false);
+      });
+      nodes.forEach((n) => {
+        if (!old.has(n)) batch.add(n);
+      });
+      nodes.forEach((node, i) => {
+        data.get(node)!.get(FractionalIndex).value = String(i).padStart(6, '0');
+      });
+      batch.sort();
+      pages = batch.buildFlushSegments().flatMap((s) => s.drawcalls);
+      previous = nodes;
+      return pages;
+    },
+    isBatch: (p: any) => p instanceof ImageBatch,
+    eligible: (n: Entity) => ImageBatch.batchKey(n) !== null,
+    unsupported: (n: Entity, value: boolean) => {
+      if (value) data.get(n)!.set(Wireframe, {});
+      else data.get(n)!.delete(Wireframe);
+    },
+    dispose: () => batch.destroy(),
+  };
+});

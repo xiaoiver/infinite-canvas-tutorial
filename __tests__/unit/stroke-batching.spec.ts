@@ -1,5 +1,5 @@
 import { createCanvas } from 'canvas';
-import { DOMAdapter, Path, Rect } from '../../packages/core/src';
+import { DOMAdapter, Path, Rect, type Shape } from '../../packages/core/src';
 import { StrokeBatch } from '../../packages/core/src/drawcalls/StrokeBatch';
 import * as packing from '../../packages/core/src/utils/stroke-batching';
 import { strokePackingContract } from '../contracts/stroke-batching';
@@ -176,4 +176,47 @@ it('reclassifies raw mutable colors when visible membership changes', () => {
     batch.destroy();
     canvas.mockRestore();
   }
+});
+
+import { orderedBatchPagesContract } from '../contracts/ordered-batch-pages';
+import { Drawcall as PlanDrawcall } from '../../packages/core/src/drawcalls/Drawcall';
+orderedBatchPagesContract<Shape>('Core stroke', () => {
+  const canvas = jest
+    .spyOn(DOMAdapter.get(), 'createCanvas')
+    .mockImplementation(
+      (width = 1, height = 1) => createCanvas(width, height) as any,
+    );
+  const batch = new BatchManager(null);
+  let current: PlanDrawcall[] = [];
+  const submit = jest
+    .spyOn(PlanDrawcall.prototype, 'submit')
+    .mockImplementation(function (this: PlanDrawcall) {
+      current.push(this);
+    });
+
+  return {
+    nodes: (count: number) =>
+      Array.from({ length: count }, () => {
+        const n = path();
+        return n;
+      }),
+    frame: (nodes: Shape[]) => {
+      current = [];
+      batch.clear(true, true, false, true);
+      nodes.forEach((n) => batch.add(n));
+      batch.flush({} as any, {} as any, {});
+      nodes.forEach((n) => (n.renderDirtyFlag = false));
+      return current;
+    },
+    isBatch: (p) => p instanceof StrokeBatch,
+    eligible: (n: Shape) => StrokeBatch.batchKey(n) !== null,
+    unsupported: (n: Shape, value: boolean) => {
+      n.strokeDasharray = value ? [2, 2] : [];
+    },
+    dispose: () => {
+      batch.destroy();
+      submit.mockRestore();
+      canvas.mockRestore();
+    },
+  };
 });

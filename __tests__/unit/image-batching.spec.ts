@@ -1,5 +1,5 @@
 import { createCanvas } from 'canvas';
-import { Rect, Path, DOMAdapter } from '../../packages/core/src';
+import { Rect, Path, DOMAdapter, type Shape } from '../../packages/core/src';
 import { BatchManager } from '../../packages/core/src/drawcalls/BatchManager';
 import { ImageBatch } from '../../packages/core/src/drawcalls/ImageBatch';
 import * as packing from '../../packages/core/src/utils/image-batching';
@@ -138,4 +138,48 @@ it('reads current Core bitmap identity and dimensions directly without a scene l
   const resized = packing.coreImageToken(shape);
   shape.fill = new Bitmap() as unknown as ImageBitmap;
   expect(packing.coreImageToken(shape)).not.toBe(resized);
+});
+
+import { orderedBatchPagesContract } from '../contracts/ordered-batch-pages';
+import { Drawcall as PlanDrawcall } from '../../packages/core/src/drawcalls/Drawcall';
+orderedBatchPagesContract<Shape>('Core image', () => {
+  const canvas = jest
+    .spyOn(DOMAdapter.get(), 'createCanvas')
+    .mockImplementation(
+      (width = 1, height = 1) => createCanvas(width, height) as any,
+    );
+  const batch = new BatchManager(null);
+  let current: PlanDrawcall[] = [];
+  const submit = jest
+    .spyOn(PlanDrawcall.prototype, 'submit')
+    .mockImplementation(function (this: PlanDrawcall) {
+      current.push(this);
+    });
+  const source = new Bitmap() as unknown as ImageBitmap;
+  return {
+    nodes: (count: number) =>
+      Array.from({ length: count }, () => {
+        const n = rect();
+        n.fill = source;
+        return n;
+      }),
+    frame: (nodes: Shape[]) => {
+      current = [];
+      batch.clear(true, true, false, true);
+      nodes.forEach((n) => batch.add(n));
+      batch.flush({} as any, {} as any, {});
+      nodes.forEach((n) => (n.renderDirtyFlag = false));
+      return current;
+    },
+    isBatch: (p) => p instanceof ImageBatch,
+    eligible: (n: Shape) => ImageBatch.batchKey(n) !== null,
+    unsupported: (n: Shape, value: boolean) => {
+      n.wireframe = value;
+    },
+    dispose: () => {
+      batch.destroy();
+      submit.mockRestore();
+      canvas.mockRestore();
+    },
+  };
 });
