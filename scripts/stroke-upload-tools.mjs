@@ -47,7 +47,22 @@ export function summarizeStrokeUploads(capture) {
         for (const [k, x] of Object.entries(v)) {
           assert(Number.isSafeInteger(x) && x >= 0, 'Invalid upload counter');
           if (k !== 'loads' && k !== 'packModules')
-            total[k] = (total[k] ?? 0) + x;
+            total[k] = k.endsWith('_peakBytes')
+              ? Math.max(total[k] ?? 0, x)
+              : (total[k] ?? 0) + x;
+        }
+      }
+      for (const mb of [1, 4, 8]) {
+        const k = `resident${mb}m_`;
+        if (total[k + 'peakBytes'] !== undefined) {
+          assert(total[k + 'peakBytes'] <= mb * 1024 * 1024);
+          assert.equal(
+            total[k + 'hits'] +
+              total[k + 'misses'] +
+              total[k + 'fallbackNodes'] +
+              total[k + 'emptyNodes'],
+            total.nodeSamples,
+          );
         }
       }
       assert(total.packedCalls > 0, 'No stroke geometry observed');

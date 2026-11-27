@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { createStrokeResidencyModel } from './stroke-residency-model';
 
 /** Isolated diagnostic recorder. No production imports, GPU writes or timers. */
 export function createStrokeUploadProbe() {
@@ -7,12 +8,18 @@ export function createStrokeUploadProbe() {
     touched: [any, string][] = [],
     owned = new Set<Callback>();
   const deviceStates = new Set<Map<string, any>>();
+  const residency = new WeakMap<
+      object,
+      ReturnType<typeof createStrokeResidencyModel>[]
+    >(),
+    residentModels = new Set<ReturnType<typeof createStrokeResidencyModel>[]>();
+  const budgets = [1, 4, 8];
   let devices = new WeakMap<object, Map<string, any>>(),
     pages = new WeakMap<object, any>();
   let heldIds = new WeakMap<object, number>(),
     nextHeldId = 0;
   const stack: { owner: any; ids: string[] }[] = [];
-  const empty = () => ({
+  const empty = (): Record<string, number> => ({
     packedCalls: 0,
     nodeSamples: 0,
     firstNodes: 0,
@@ -25,6 +32,23 @@ export function createStrokeUploadProbe() {
     spanUploadBytes: 0,
     capacityUploadBytes: 0,
     capacityAllocations: 0,
+    ...Object.fromEntries(
+      budgets.flatMap((mb) =>
+        [
+          'hits',
+          'misses',
+          'invalidations',
+          'evictions',
+          'geometryBytes',
+          'placementBytes',
+          'fallbackBytes',
+          'fallbackPages',
+          'fallbackNodes',
+          'emptyNodes',
+          'peakBytes',
+        ].map((key) => [`resident${mb}m_${key}`, 0]),
+      ),
+    ),
   });
   let active = false,
     counts = empty(),
@@ -141,6 +165,7 @@ export function createStrokeUploadProbe() {
         devices.set(frame.owner.device, states);
         deviceStates.add(states);
       }
+      const residentParts: { id: string; version: number; rows: number }[] = [];
       for (let i = 0; i < parts.length; i++) {
         const part = parts[i],
           id = frame.ids[i],
@@ -163,8 +188,32 @@ export function createStrokeUploadProbe() {
           if (equal && placed)
             counts.unchangedPayloadBytes += rows * (15 + stride) * 4;
         }
-        states.set(id, { p, t, placement });
+        const version = equal ? old.version : (old?.version ?? 0) + 1;
+        residentParts.push({ id, version, rows });
+        states.set(id, { p, t, placement, version });
       }
+      let models = residency.get(frame.owner.device);
+      if (!models) {
+        models = budgets.map((mb) =>
+          (window as any).createStrokeResidencyModel(mb * 1024 * 1024),
+        );
+        residency.set(frame.owner.device, models);
+        residentModels.add(models);
+      }
+      models.forEach((model, i) => {
+        const result = model.page(
+          residentParts,
+          points.byteLength + travel.byteLength,
+        );
+        if (active)
+          for (const [key, value] of Object.entries(result)) {
+            const field = `resident${budgets[i]}m_${key}`;
+            counts[field] =
+              key === 'peakBytes'
+                ? Math.max(counts[field], value)
+                : counts[field] + value;
+          }
+      });
       const old = pages.get(frame.owner),
         rows = points.length / 15;
       // Diagnostic model only: power-of-two capacity without shrinking.
@@ -193,6 +242,11 @@ export function createStrokeUploadProbe() {
       if (active || stack.length)
         throw new Error('Upload probe already active');
       counts = empty();
+      for (const models of residentModels)
+        models.forEach((model, i) => {
+          const field = `resident${budgets[i]}m_peakBytes`;
+          counts[field] = Math.max(counts[field], model.usedBytes);
+        });
       active = true;
     },
     take() {
@@ -212,6 +266,10 @@ export function createStrokeUploadProbe() {
         if (owned.has(target[key])) throw new Error('Upload wrapper survived');
       for (const state of deviceStates) state.clear();
       deviceStates.clear();
+      for (const models of residentModels)
+        models.forEach((model) => model.clear());
+      residentModels.clear();
+      delete (window as any).createStrokeResidencyModel;
       devices = new WeakMap();
       pages = new WeakMap();
       heldIds = new WeakMap();
@@ -226,6 +284,9 @@ export function createStrokeUploadProbe() {
 
 /** Observe the original emitted buffers. Rewritten modules stay in this page only. */
 export async function installStrokeUploadProbe(page: Page) {
+  await page.addInitScript({
+    content: `window.createStrokeResidencyModel = ${createStrokeResidencyModel.toString()};`,
+  });
   await page.addInitScript(createStrokeUploadProbe);
   await page.route('**/utils/stroke-batching.ts*', async (route) => {
     const response = await route.fetch();

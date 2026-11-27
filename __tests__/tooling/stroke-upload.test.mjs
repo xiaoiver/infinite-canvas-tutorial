@@ -77,3 +77,20 @@ test('ordinary comparison entry points reject the upload diagnostic marker', () 
   };
   assert.throws(() => compareReplays(y, y), /Diagnostic/);
 });
+test('resident peak gauges use max while transfer counters sum', () => {
+  const x = capture();
+  Object.assign(x.rounds[0].steps[0].strokeUploads, {
+    resident1m_peakBytes: 512,
+    resident1m_hits: 1,
+    resident1m_misses: 0,
+    resident1m_fallbackNodes: 0,
+    resident1m_emptyNodes: 0,
+    resident1m_geometryBytes: 64,
+  });
+  x.rounds[0].steps.push(structuredClone(x.rounds[0].steps[0]));
+  const result = summarizeStrokeUploads(x)[0];
+  assert.equal(result.resident1m_peakBytes, 512);
+  assert.equal(result.resident1m_geometryBytes, 128);
+  x.rounds[0].steps[0].strokeUploads.resident1m_peakBytes = 2 * 1024 * 1024;
+  assert.throws(() => summarizeStrokeUploads(x));
+});

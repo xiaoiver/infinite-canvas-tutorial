@@ -1,0 +1,1807 @@
+{
+  "schema": 1,
+  "kind": "optimistic-rebuild-only-transfer-model",
+  "productionControl": "0df7feb121d44e14c80a1cd1737305210439e5c9",
+  "chromium": {
+    "sources": [
+      {
+        "kind": "workflow",
+        "variant": "control",
+        "source": {
+          "head": "0df7feb121d44e14c80a1cd1737305210439e5c9",
+          "tree": "c7562a90b214fb2d0d38ea76e8f0586a7c7e25e8",
+          "dirty": false
+        },
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3"
+      },
+      {
+        "kind": "workflow",
+        "variant": "ordinary",
+        "source": {
+          "head": "38d7c222eaa9a03c1ace0d45605eca0d7e8c2145",
+          "tree": "f7f1f50034c51b1466627ceaa0a3cd22d7e8292b",
+          "dirty": false
+        },
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3"
+      },
+      {
+        "kind": "workflow",
+        "variant": "diagnostic",
+        "source": {
+          "head": "38d7c222eaa9a03c1ace0d45605eca0d7e8c2145",
+          "tree": "f7f1f50034c51b1466627ceaa0a3cd22d7e8292b",
+          "dirty": false
+        },
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3"
+      },
+      {
+        "kind": "strokes",
+        "variant": "control",
+        "source": {
+          "head": "0df7feb121d44e14c80a1cd1737305210439e5c9",
+          "tree": "c7562a90b214fb2d0d38ea76e8f0586a7c7e25e8",
+          "dirty": false
+        },
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3"
+      },
+      {
+        "kind": "strokes",
+        "variant": "ordinary",
+        "source": {
+          "head": "38d7c222eaa9a03c1ace0d45605eca0d7e8c2145",
+          "tree": "f7f1f50034c51b1466627ceaa0a3cd22d7e8292b",
+          "dirty": false
+        },
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3"
+      },
+      {
+        "kind": "strokes",
+        "variant": "diagnostic",
+        "source": {
+          "head": "38d7c222eaa9a03c1ace0d45605eca0d7e8c2145",
+          "tree": "f7f1f50034c51b1466627ceaa0a3cd22d7e8292b",
+          "dirty": false
+        },
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3"
+      }
+    ],
+    "checks": [
+      {
+        "kind": "workflow",
+        "controlVsOrdinary": "exact semantic/native/resource/geometry-call parity",
+        "ordinaryVsDiagnostic": "exact semantic/native/resource/geometry-call parity",
+        "clocks": "passed",
+        "ordinaryQualifiers": "passed",
+        "diagnosticRejectedAsOrdinary": true
+      },
+      {
+        "kind": "strokes",
+        "controlVsOrdinary": "exact semantic/native/resource/geometry-call parity",
+        "ordinaryVsDiagnostic": "exact semantic/native/resource/geometry-call parity",
+        "clocks": "passed",
+        "ordinaryQualifiers": "passed",
+        "diagnosticRejectedAsOrdinary": true
+      }
+    ],
+    "counts": [
+      {
+        "kind": "workflow",
+        "backend": "ecs",
+        "round": 0,
+        "packedCalls": 69,
+        "nodeSamples": 14992,
+        "firstNodes": 0,
+        "unchangedGeometryNodes": 12010,
+        "changedGeometryNodes": 2982,
+        "unchangedGeometryBytes": 12845760,
+        "unchangedPayloadBytes": 15414912,
+        "placementChanges": 0,
+        "packedBytes": 19695312,
+        "spanUploadBytes": 19623972,
+        "capacityUploadBytes": 19624076,
+        "capacityAllocations": 26,
+        "resident1m_hits": 3057,
+        "resident1m_misses": 11935,
+        "resident1m_invalidations": 418,
+        "resident1m_evictions": 11537,
+        "resident1m_geometryBytes": 13627968,
+        "resident1m_placementBytes": 4376736,
+        "resident1m_fallbackBytes": 0,
+        "resident1m_fallbackPages": 0,
+        "resident1m_fallbackNodes": 0,
+        "resident1m_emptyNodes": 0,
+        "resident1m_peakBytes": 1048576,
+        "resident4m_hits": 12010,
+        "resident4m_misses": 2982,
+        "resident4m_invalidations": 2982,
+        "resident4m_evictions": 0,
+        "resident4m_geometryBytes": 3804800,
+        "resident4m_placementBytes": 4376736,
+        "resident4m_fallbackBytes": 0,
+        "resident4m_fallbackPages": 0,
+        "resident4m_fallbackNodes": 0,
+        "resident4m_emptyNodes": 0,
+        "resident4m_peakBytes": 2817280,
+        "resident8m_hits": 12010,
+        "resident8m_misses": 2982,
+        "resident8m_invalidations": 2982,
+        "resident8m_evictions": 0,
+        "resident8m_geometryBytes": 3804800,
+        "resident8m_placementBytes": 4376736,
+        "resident8m_fallbackBytes": 0,
+        "resident8m_fallbackPages": 0,
+        "resident8m_fallbackNodes": 0,
+        "resident8m_emptyNodes": 0,
+        "resident8m_peakBytes": 2817280
+      },
+      {
+        "kind": "workflow",
+        "backend": "ecs",
+        "round": 1,
+        "packedCalls": 69,
+        "nodeSamples": 14992,
+        "firstNodes": 0,
+        "unchangedGeometryNodes": 12666,
+        "changedGeometryNodes": 2326,
+        "unchangedGeometryBytes": 13650000,
+        "unchangedPayloadBytes": 16380000,
+        "placementChanges": 0,
+        "packedBytes": 19730160,
+        "spanUploadBytes": 19666456,
+        "capacityUploadBytes": 19666560,
+        "capacityAllocations": 26,
+        "resident1m_hits": 3057,
+        "resident1m_misses": 11935,
+        "resident1m_invalidations": 418,
+        "resident1m_evictions": 11517,
+        "resident1m_geometryBytes": 13634368,
+        "resident1m_placementBytes": 4384480,
+        "resident1m_fallbackBytes": 0,
+        "resident1m_fallbackPages": 0,
+        "resident1m_fallbackNodes": 0,
+        "resident1m_emptyNodes": 0,
+        "resident1m_peakBytes": 1048576,
+        "resident4m_hits": 12666,
+        "resident4m_misses": 2326,
+        "resident4m_invalidations": 2326,
+        "resident4m_evictions": 0,
+        "resident4m_geometryBytes": 2977920,
+        "resident4m_placementBytes": 4384480,
+        "resident4m_fallbackBytes": 0,
+        "resident4m_fallbackPages": 0,
+        "resident4m_fallbackNodes": 0,
+        "resident4m_emptyNodes": 0,
+        "resident4m_peakBytes": 2817280,
+        "resident8m_hits": 12666,
+        "resident8m_misses": 2326,
+        "resident8m_invalidations": 2326,
+        "resident8m_evictions": 0,
+        "resident8m_geometryBytes": 2977920,
+        "resident8m_placementBytes": 4384480,
+        "resident8m_fallbackBytes": 0,
+        "resident8m_fallbackPages": 0,
+        "resident8m_fallbackNodes": 0,
+        "resident8m_emptyNodes": 0,
+        "resident8m_peakBytes": 2817280
+      },
+      {
+        "kind": "strokes",
+        "backend": "core",
+        "round": 0,
+        "packedCalls": 38,
+        "nodeSamples": 8396,
+        "firstNodes": 0,
+        "unchangedGeometryNodes": 5988,
+        "changedGeometryNodes": 2408,
+        "unchangedGeometryBytes": 8752172,
+        "unchangedPayloadBytes": 8761280,
+        "placementChanges": 2144,
+        "packedBytes": 15202624,
+        "spanUploadBytes": 12664284,
+        "capacityUploadBytes": 12664284,
+        "capacityAllocations": 34,
+        "resident1m_hits": 1072,
+        "resident1m_misses": 7324,
+        "resident1m_invalidations": 0,
+        "resident1m_evictions": 7324,
+        "resident1m_geometryBytes": 13161536,
+        "resident1m_placementBytes": 3800656,
+        "resident1m_fallbackBytes": 0,
+        "resident1m_fallbackPages": 0,
+        "resident1m_fallbackNodes": 0,
+        "resident1m_emptyNodes": 0,
+        "resident1m_peakBytes": 1048576,
+        "resident4m_hits": 5082,
+        "resident4m_misses": 3314,
+        "resident4m_invalidations": 2344,
+        "resident4m_evictions": 970,
+        "resident4m_geometryBytes": 6040768,
+        "resident4m_placementBytes": 3800656,
+        "resident4m_fallbackBytes": 0,
+        "resident4m_fallbackPages": 0,
+        "resident4m_fallbackNodes": 0,
+        "resident4m_emptyNodes": 0,
+        "resident4m_peakBytes": 4194304,
+        "resident8m_hits": 5988,
+        "resident8m_misses": 2408,
+        "resident8m_invalidations": 2408,
+        "resident8m_evictions": 0,
+        "resident8m_geometryBytes": 4430720,
+        "resident8m_placementBytes": 3800656,
+        "resident8m_fallbackBytes": 0,
+        "resident8m_fallbackPages": 0,
+        "resident8m_fallbackNodes": 0,
+        "resident8m_emptyNodes": 0,
+        "resident8m_peakBytes": 4416512
+      },
+      {
+        "kind": "strokes",
+        "backend": "core",
+        "round": 1,
+        "packedCalls": 38,
+        "nodeSamples": 8396,
+        "firstNodes": 0,
+        "unchangedGeometryNodes": 5988,
+        "changedGeometryNodes": 2408,
+        "unchangedGeometryBytes": 8752172,
+        "unchangedPayloadBytes": 8761280,
+        "placementChanges": 2144,
+        "packedBytes": 15202624,
+        "spanUploadBytes": 12664284,
+        "capacityUploadBytes": 12664284,
+        "capacityAllocations": 34,
+        "resident1m_hits": 1072,
+        "resident1m_misses": 7324,
+        "resident1m_invalidations": 0,
+        "resident1m_evictions": 7324,
+        "resident1m_geometryBytes": 13161536,
+        "resident1m_placementBytes": 3800656,
+        "resident1m_fallbackBytes": 0,
+        "resident1m_fallbackPages": 0,
+        "resident1m_fallbackNodes": 0,
+        "resident1m_emptyNodes": 0,
+        "resident1m_peakBytes": 1048576,
+        "resident4m_hits": 5082,
+        "resident4m_misses": 3314,
+        "resident4m_invalidations": 2344,
+        "resident4m_evictions": 970,
+        "resident4m_geometryBytes": 6040768,
+        "resident4m_placementBytes": 3800656,
+        "resident4m_fallbackBytes": 0,
+        "resident4m_fallbackPages": 0,
+        "resident4m_fallbackNodes": 0,
+        "resident4m_emptyNodes": 0,
+        "resident4m_peakBytes": 4194304,
+        "resident8m_hits": 5988,
+        "resident8m_misses": 2408,
+        "resident8m_invalidations": 2408,
+        "resident8m_evictions": 0,
+        "resident8m_geometryBytes": 4430720,
+        "resident8m_placementBytes": 3800656,
+        "resident8m_fallbackBytes": 0,
+        "resident8m_fallbackPages": 0,
+        "resident8m_fallbackNodes": 0,
+        "resident8m_emptyNodes": 0,
+        "resident8m_peakBytes": 4416512
+      },
+      {
+        "kind": "strokes",
+        "backend": "ecs",
+        "round": 0,
+        "packedCalls": 38,
+        "nodeSamples": 8396,
+        "firstNodes": 0,
+        "unchangedGeometryNodes": 5988,
+        "changedGeometryNodes": 2408,
+        "unchangedGeometryBytes": 10098660,
+        "unchangedPayloadBytes": 12118392,
+        "placementChanges": 0,
+        "packedBytes": 17102952,
+        "spanUploadBytes": 13890036,
+        "capacityUploadBytes": 13890036,
+        "capacityAllocations": 34,
+        "resident1m_hits": 1072,
+        "resident1m_misses": 7324,
+        "resident1m_invalidations": 0,
+        "resident1m_evictions": 7324,
+        "resident1m_geometryBytes": 13161536,
+        "resident1m_placementBytes": 3800656,
+        "resident1m_fallbackBytes": 0,
+        "resident1m_fallbackPages": 0,
+        "resident1m_fallbackNodes": 0,
+        "resident1m_emptyNodes": 0,
+        "resident1m_peakBytes": 1048576,
+        "resident4m_hits": 5082,
+        "resident4m_misses": 3314,
+        "resident4m_invalidations": 2344,
+        "resident4m_evictions": 970,
+        "resident4m_geometryBytes": 6040768,
+        "resident4m_placementBytes": 3800656,
+        "resident4m_fallbackBytes": 0,
+        "resident4m_fallbackPages": 0,
+        "resident4m_fallbackNodes": 0,
+        "resident4m_emptyNodes": 0,
+        "resident4m_peakBytes": 4194304,
+        "resident8m_hits": 5988,
+        "resident8m_misses": 2408,
+        "resident8m_invalidations": 2408,
+        "resident8m_evictions": 0,
+        "resident8m_geometryBytes": 4430720,
+        "resident8m_placementBytes": 3800656,
+        "resident8m_fallbackBytes": 0,
+        "resident8m_fallbackPages": 0,
+        "resident8m_fallbackNodes": 0,
+        "resident8m_emptyNodes": 0,
+        "resident8m_peakBytes": 4416512
+      },
+      {
+        "kind": "strokes",
+        "backend": "ecs",
+        "round": 1,
+        "packedCalls": 38,
+        "nodeSamples": 8396,
+        "firstNodes": 0,
+        "unchangedGeometryNodes": 5988,
+        "changedGeometryNodes": 2408,
+        "unchangedGeometryBytes": 10098660,
+        "unchangedPayloadBytes": 12118392,
+        "placementChanges": 0,
+        "packedBytes": 17102952,
+        "spanUploadBytes": 13890036,
+        "capacityUploadBytes": 13890036,
+        "capacityAllocations": 34,
+        "resident1m_hits": 1072,
+        "resident1m_misses": 7324,
+        "resident1m_invalidations": 0,
+        "resident1m_evictions": 7324,
+        "resident1m_geometryBytes": 13161536,
+        "resident1m_placementBytes": 3800656,
+        "resident1m_fallbackBytes": 0,
+        "resident1m_fallbackPages": 0,
+        "resident1m_fallbackNodes": 0,
+        "resident1m_emptyNodes": 0,
+        "resident1m_peakBytes": 1048576,
+        "resident4m_hits": 5082,
+        "resident4m_misses": 3314,
+        "resident4m_invalidations": 2344,
+        "resident4m_evictions": 970,
+        "resident4m_geometryBytes": 6040768,
+        "resident4m_placementBytes": 3800656,
+        "resident4m_fallbackBytes": 0,
+        "resident4m_fallbackPages": 0,
+        "resident4m_fallbackNodes": 0,
+        "resident4m_emptyNodes": 0,
+        "resident4m_peakBytes": 4194304,
+        "resident8m_hits": 5988,
+        "resident8m_misses": 2408,
+        "resident8m_invalidations": 2408,
+        "resident8m_evictions": 0,
+        "resident8m_geometryBytes": 4430720,
+        "resident8m_placementBytes": 3800656,
+        "resident8m_fallbackBytes": 0,
+        "resident8m_fallbackPages": 0,
+        "resident8m_fallbackNodes": 0,
+        "resident8m_emptyNodes": 0,
+        "resident8m_peakBytes": 4416512
+      }
+    ],
+    "ordinary": [
+      {
+        "kind": "workflow",
+        "variant": "control",
+        "backend": "ecs",
+        "round": 0,
+        "samples": 20,
+        "engineMs": {
+          "p50": 17.5999999998603,
+          "p95": 78.4000000001397,
+          "total": 736.1000000000931
+        },
+        "operationToFrameMs": {
+          "p50": 17.699999999953434,
+          "p95": 78.5,
+          "total": 743.4000000003725
+        },
+        "inputToFrameMs": {
+          "p50": 17.699999999953434,
+          "p95": 78.5,
+          "total": 744.2000000001863
+        },
+        "native": {
+          "bufferCreates": {
+            "min": 0,
+            "max": 18,
+            "total": 119
+          },
+          "bufferDeletes": {
+            "min": 0,
+            "max": 26,
+            "total": 119
+          },
+          "bufferAllocations": {
+            "min": 0,
+            "max": 18,
+            "total": 119
+          },
+          "drawcalls": {
+            "min": 3,
+            "max": 22,
+            "total": 159
+          },
+          "indices": {
+            "min": 15516,
+            "max": 633846,
+            "total": 4194504
+          },
+          "arrayVertices": {
+            "min": 4,
+            "max": 4,
+            "total": 80
+          },
+          "bufferUploads": {
+            "min": 5,
+            "max": 44,
+            "total": 326
+          },
+          "bufferBytes": {
+            "min": 76640,
+            "max": 3177080,
+            "total": 21113128
+          },
+          "uniformUploads": {
+            "min": 2,
+            "max": 11,
+            "total": 89
+          },
+          "uniformBytes": {
+            "min": 320,
+            "max": 1472,
+            "total": 12672
+          }
+        },
+        "visible": {
+          "cards": [36, 2400],
+          "edges": [36, 2400]
+        }
+      },
+      {
+        "kind": "workflow",
+        "variant": "control",
+        "backend": "ecs",
+        "round": 1,
+        "samples": 20,
+        "engineMs": {
+          "p50": 13.600000000093132,
+          "p95": 62.60000000009313,
+          "total": 536.5000000004657
+        },
+        "operationToFrameMs": {
+          "p50": 14,
+          "p95": 62.800000000046566,
+          "total": 541.7000000004191
+        },
+        "inputToFrameMs": {
+          "p50": 14,
+          "p95": 62.800000000046566,
+          "total": 542.1000000005588
+        },
+        "native": {
+          "bufferCreates": {
+            "min": 0,
+            "max": 18,
+            "total": 81
+          },
+          "bufferDeletes": {
+            "min": 0,
+            "max": 18,
+            "total": 81
+          },
+          "bufferAllocations": {
+            "min": 0,
+            "max": 18,
+            "total": 81
+          },
+          "drawcalls": {
+            "min": 3,
+            "max": 22,
+            "total": 159
+          },
+          "indices": {
+            "min": 15516,
+            "max": 633846,
+            "total": 4201764
+          },
+          "arrayVertices": {
+            "min": 4,
+            "max": 4,
+            "total": 80
+          },
+          "bufferUploads": {
+            "min": 5,
+            "max": 44,
+            "total": 326
+          },
+          "bufferBytes": {
+            "min": 76640,
+            "max": 3177080,
+            "total": 21147976
+          },
+          "uniformUploads": {
+            "min": 2,
+            "max": 11,
+            "total": 89
+          },
+          "uniformBytes": {
+            "min": 320,
+            "max": 1472,
+            "total": 12672
+          }
+        },
+        "visible": {
+          "cards": [36, 2400],
+          "edges": [36, 2400]
+        }
+      },
+      {
+        "kind": "workflow",
+        "variant": "ordinary",
+        "backend": "ecs",
+        "round": 0,
+        "samples": 20,
+        "engineMs": {
+          "p50": 16.9000000001397,
+          "p95": 89.0999999998603,
+          "total": 704.6999999999534
+        },
+        "operationToFrameMs": {
+          "p50": 17,
+          "p95": 89.5999999998603,
+          "total": 712.399999999674
+        },
+        "inputToFrameMs": {
+          "p50": 17,
+          "p95": 89.5999999998603,
+          "total": 712.6999999999534
+        },
+        "native": {
+          "bufferCreates": {
+            "min": 0,
+            "max": 18,
+            "total": 119
+          },
+          "bufferDeletes": {
+            "min": 0,
+            "max": 26,
+            "total": 119
+          },
+          "bufferAllocations": {
+            "min": 0,
+            "max": 18,
+            "total": 119
+          },
+          "drawcalls": {
+            "min": 3,
+            "max": 22,
+            "total": 159
+          },
+          "indices": {
+            "min": 15516,
+            "max": 633846,
+            "total": 4194504
+          },
+          "arrayVertices": {
+            "min": 4,
+            "max": 4,
+            "total": 80
+          },
+          "bufferUploads": {
+            "min": 5,
+            "max": 44,
+            "total": 326
+          },
+          "bufferBytes": {
+            "min": 76640,
+            "max": 3177080,
+            "total": 21113128
+          },
+          "uniformUploads": {
+            "min": 2,
+            "max": 11,
+            "total": 89
+          },
+          "uniformBytes": {
+            "min": 320,
+            "max": 1472,
+            "total": 12672
+          }
+        },
+        "visible": {
+          "cards": [36, 2400],
+          "edges": [36, 2400]
+        }
+      },
+      {
+        "kind": "workflow",
+        "variant": "ordinary",
+        "backend": "ecs",
+        "round": 1,
+        "samples": 20,
+        "engineMs": {
+          "p50": 12.200000000186265,
+          "p95": 67.5999999998603,
+          "total": 554
+        },
+        "operationToFrameMs": {
+          "p50": 12.200000000186265,
+          "p95": 67.79999999981374,
+          "total": 558.4999999993015
+        },
+        "inputToFrameMs": {
+          "p50": 12.300000000046566,
+          "p95": 67.79999999981374,
+          "total": 558.9999999995343
+        },
+        "native": {
+          "bufferCreates": {
+            "min": 0,
+            "max": 18,
+            "total": 81
+          },
+          "bufferDeletes": {
+            "min": 0,
+            "max": 18,
+            "total": 81
+          },
+          "bufferAllocations": {
+            "min": 0,
+            "max": 18,
+            "total": 81
+          },
+          "drawcalls": {
+            "min": 3,
+            "max": 22,
+            "total": 159
+          },
+          "indices": {
+            "min": 15516,
+            "max": 633846,
+            "total": 4201764
+          },
+          "arrayVertices": {
+            "min": 4,
+            "max": 4,
+            "total": 80
+          },
+          "bufferUploads": {
+            "min": 5,
+            "max": 44,
+            "total": 326
+          },
+          "bufferBytes": {
+            "min": 76640,
+            "max": 3177080,
+            "total": 21147976
+          },
+          "uniformUploads": {
+            "min": 2,
+            "max": 11,
+            "total": 89
+          },
+          "uniformBytes": {
+            "min": 320,
+            "max": 1472,
+            "total": 12672
+          }
+        },
+        "visible": {
+          "cards": [36, 2400],
+          "edges": [36, 2400]
+        }
+      },
+      {
+        "kind": "strokes",
+        "variant": "control",
+        "backend": "core",
+        "round": 0,
+        "samples": 12,
+        "engineMs": {
+          "p50": 6,
+          "p95": 63.5999999998603,
+          "total": 164
+        },
+        "operationToFrameMs": {
+          "p50": 6,
+          "p95": 63.5999999998603,
+          "total": 164
+        },
+        "native": {
+          "bufferCreates": {
+            "min": 0,
+            "max": 32,
+            "total": 65
+          },
+          "bufferDeletes": {
+            "min": 0,
+            "max": 32,
+            "total": 65
+          },
+          "bufferAllocations": {
+            "min": 0,
+            "max": 32,
+            "total": 65
+          },
+          "drawcalls": {
+            "min": 0,
+            "max": 11,
+            "total": 57
+          },
+          "indices": {
+            "min": 0,
+            "max": 999000,
+            "total": 4562115
+          },
+          "arrayVertices": {
+            "min": 0,
+            "max": 4,
+            "total": 36
+          },
+          "bufferUploads": {
+            "min": 0,
+            "max": 33,
+            "total": 125
+          },
+          "bufferBytes": {
+            "min": 0,
+            "max": 4263808,
+            "total": 15208704
+          },
+          "uniformUploads": {
+            "min": 0,
+            "max": 11,
+            "total": 47
+          },
+          "uniformBytes": {
+            "min": 0,
+            "max": 1312,
+            "total": 5984
+          },
+          "arrayBufferBinds": {
+            "min": 0,
+            "max": 102,
+            "total": 440
+          },
+          "elementBufferBinds": {
+            "min": 0,
+            "max": 11,
+            "total": 49
+          },
+          "vertexAttribPointers": {
+            "min": 0,
+            "max": 81,
+            "total": 393
+          }
+        },
+        "visible": [0, 2400]
+      },
+      {
+        "kind": "strokes",
+        "variant": "control",
+        "backend": "core",
+        "round": 1,
+        "samples": 12,
+        "engineMs": {
+          "p50": 3.800000000046566,
+          "p95": 13.800000000046566,
+          "total": 54.99999999976717
+        },
+        "operationToFrameMs": {
+          "p50": 3.800000000046566,
+          "p95": 13.800000000046566,
+          "total": 55.0999999998603
+        },
+        "native": {
+          "bufferCreates": {
+            "min": 0,
+            "max": 32,
+            "total": 67
+          },
+          "bufferDeletes": {
+            "min": 0,
+            "max": 32,
+            "total": 67
+          },
+          "bufferAllocations": {
+            "min": 0,
+            "max": 32,
+            "total": 67
+          },
+          "drawcalls": {
+            "min": 0,
+            "max": 11,
+            "total": 57
+          },
+          "indices": {
+            "min": 0,
+            "max": 999000,
+            "total": 4562115
+          },
+          "arrayVertices": {
+            "min": 0,
+            "max": 4,
+            "total": 36
+          },
+          "bufferUploads": {
+            "min": 0,
+            "max": 33,
+            "total": 125
+          },
+          "bufferBytes": {
+            "min": 0,
+            "max": 4263808,
+            "total": 15208704
+          },
+          "uniformUploads": {
+            "min": 0,
+            "max": 11,
+            "total": 47
+          },
+          "uniformBytes": {
+            "min": 0,
+            "max": 1312,
+            "total": 5984
+          },
+          "arrayBufferBinds": {
+            "min": 0,
+            "max": 102,
+            "total": 442
+          },
+          "elementBufferBinds": {
+            "min": 0,
+            "max": 11,
+            "total": 49
+          },
+          "vertexAttribPointers": {
+            "min": 0,
+            "max": 81,
+            "total": 393
+          }
+        },
+        "visible": [0, 2400]
+      },
+      {
+        "kind": "strokes",
+        "variant": "control",
+        "backend": "ecs",
+        "round": 0,
+        "samples": 12,
+        "engineMs": {
+          "p50": 13.100000000093132,
+          "p95": 108.19999999995343,
+          "total": 365.00000000023283
+        },
+        "operationToFrameMs": {
+          "p50": 25.699999999953434,
+          "p95": 115.10000000009313,
+          "total": 468.69999999995343
+        },
+        "native": {
+          "bufferCreates": {
+            "min": 0,
+            "max": 32,
+            "total": 65
+          },
+          "bufferDeletes": {
+            "min": 0,
+            "max": 32,
+            "total": 65
+          },
+          "bufferAllocations": {
+            "min": 0,
+            "max": 32,
+            "total": 65
+          },
+          "drawcalls": {
+            "min": 0,
+            "max": 11,
+            "total": 57
+          },
+          "indices": {
+            "min": 0,
+            "max": 999000,
+            "total": 4562115
+          },
+          "arrayVertices": {
+            "min": 0,
+            "max": 4,
+            "total": 36
+          },
+          "bufferUploads": {
+            "min": 0,
+            "max": 33,
+            "total": 116
+          },
+          "bufferBytes": {
+            "min": 0,
+            "max": 4796768,
+            "total": 17108488
+          },
+          "uniformUploads": {
+            "min": 0,
+            "max": 11,
+            "total": 38
+          },
+          "uniformBytes": {
+            "min": 0,
+            "max": 1472,
+            "total": 5440
+          },
+          "arrayBufferBinds": {
+            "min": 0,
+            "max": 102,
+            "total": 440
+          },
+          "elementBufferBinds": {
+            "min": 0,
+            "max": 11,
+            "total": 49
+          },
+          "vertexAttribPointers": {
+            "min": 0,
+            "max": 81,
+            "total": 393
+          }
+        },
+        "visible": [0, 2400]
+      },
+      {
+        "kind": "strokes",
+        "variant": "control",
+        "backend": "ecs",
+        "round": 1,
+        "samples": 12,
+        "engineMs": {
+          "p50": 11.199999999953434,
+          "p95": 36.300000000046566,
+          "total": 179.30000000004657
+        },
+        "operationToFrameMs": {
+          "p50": 18,
+          "p95": 48.200000000186265,
+          "total": 294.2000000004191
+        },
+        "native": {
+          "bufferCreates": {
+            "min": 0,
+            "max": 32,
+            "total": 67
+          },
+          "bufferDeletes": {
+            "min": 0,
+            "max": 32,
+            "total": 67
+          },
+          "bufferAllocations": {
+            "min": 0,
+            "max": 32,
+            "total": 67
+          },
+          "drawcalls": {
+            "min": 0,
+            "max": 11,
+            "total": 57
+          },
+          "indices": {
+            "min": 0,
+            "max": 999000,
+            "total": 4562115
+          },
+          "arrayVertices": {
+            "min": 0,
+            "max": 4,
+            "total": 36
+          },
+          "bufferUploads": {
+            "min": 0,
+            "max": 33,
+            "total": 116
+          },
+          "bufferBytes": {
+            "min": 0,
+            "max": 4796768,
+            "total": 17108488
+          },
+          "uniformUploads": {
+            "min": 0,
+            "max": 11,
+            "total": 38
+          },
+          "uniformBytes": {
+            "min": 0,
+            "max": 1472,
+            "total": 5440
+          },
+          "arrayBufferBinds": {
+            "min": 0,
+            "max": 102,
+            "total": 442
+          },
+          "elementBufferBinds": {
+            "min": 0,
+            "max": 11,
+            "total": 49
+          },
+          "vertexAttribPointers": {
+            "min": 0,
+            "max": 81,
+            "total": 393
+          }
+        },
+        "visible": [0, 2400]
+      },
+      {
+        "kind": "strokes",
+        "variant": "ordinary",
+        "backend": "core",
+        "round": 0,
+        "samples": 12,
+        "engineMs": {
+          "p50": 5.099999999860302,
+          "p95": 50.299999999813735,
+          "total": 150.39999999920838
+        },
+        "operationToFrameMs": {
+          "p50": 5.099999999860302,
+          "p95": 50.299999999813735,
+          "total": 150.4999999993015
+        },
+        "native": {
+          "bufferCreates": {
+            "min": 0,
+            "max": 32,
+            "total": 65
+          },
+          "bufferDeletes": {
+            "min": 0,
+            "max": 32,
+            "total": 65
+          },
+          "bufferAllocations": {
+            "min": 0,
+            "max": 32,
+            "total": 65
+          },
+          "drawcalls": {
+            "min": 0,
+            "max": 11,
+            "total": 57
+          },
+          "indices": {
+            "min": 0,
+            "max": 999000,
+            "total": 4562115
+          },
+          "arrayVertices": {
+            "min": 0,
+            "max": 4,
+            "total": 36
+          },
+          "bufferUploads": {
+            "min": 0,
+            "max": 33,
+            "total": 125
+          },
+          "bufferBytes": {
+            "min": 0,
+            "max": 4263808,
+            "total": 15208704
+          },
+          "uniformUploads": {
+            "min": 0,
+            "max": 11,
+            "total": 47
+          },
+          "uniformBytes": {
+            "min": 0,
+            "max": 1312,
+            "total": 5984
+          },
+          "arrayBufferBinds": {
+            "min": 0,
+            "max": 102,
+            "total": 440
+          },
+          "elementBufferBinds": {
+            "min": 0,
+            "max": 11,
+            "total": 49
+          },
+          "vertexAttribPointers": {
+            "min": 0,
+            "max": 81,
+            "total": 393
+          }
+        },
+        "visible": [0, 2400]
+      },
+      {
+        "kind": "strokes",
+        "variant": "ordinary",
+        "backend": "core",
+        "round": 1,
+        "samples": 12,
+        "engineMs": {
+          "p50": 3,
+          "p95": 12.800000000046566,
+          "total": 46.49999999976717
+        },
+        "operationToFrameMs": {
+          "p50": 3,
+          "p95": 12.800000000046566,
+          "total": 46.49999999976717
+        },
+        "native": {
+          "bufferCreates": {
+            "min": 0,
+            "max": 32,
+            "total": 67
+          },
+          "bufferDeletes": {
+            "min": 0,
+            "max": 32,
+            "total": 67
+          },
+          "bufferAllocations": {
+            "min": 0,
+            "max": 32,
+            "total": 67
+          },
+          "drawcalls": {
+            "min": 0,
+            "max": 11,
+            "total": 57
+          },
+          "indices": {
+            "min": 0,
+            "max": 999000,
+            "total": 4562115
+          },
+          "arrayVertices": {
+            "min": 0,
+            "max": 4,
+            "total": 36
+          },
+          "bufferUploads": {
+            "min": 0,
+            "max": 33,
+            "total": 125
+          },
+          "bufferBytes": {
+            "min": 0,
+            "max": 4263808,
+            "total": 15208704
+          },
+          "uniformUploads": {
+            "min": 0,
+            "max": 11,
+            "total": 47
+          },
+          "uniformBytes": {
+            "min": 0,
+            "max": 1312,
+            "total": 5984
+          },
+          "arrayBufferBinds": {
+            "min": 0,
+            "max": 102,
+            "total": 442
+          },
+          "elementBufferBinds": {
+            "min": 0,
+            "max": 11,
+            "total": 49
+          },
+          "vertexAttribPointers": {
+            "min": 0,
+            "max": 81,
+            "total": 393
+          }
+        },
+        "visible": [0, 2400]
+      },
+      {
+        "kind": "strokes",
+        "variant": "ordinary",
+        "backend": "ecs",
+        "round": 0,
+        "samples": 12,
+        "engineMs": {
+          "p50": 14,
+          "p95": 74.30000000004657,
+          "total": 325.5
+        },
+        "operationToFrameMs": {
+          "p50": 23.9000000001397,
+          "p95": 77.39999999990687,
+          "total": 403.60000000009313
+        },
+        "native": {
+          "bufferCreates": {
+            "min": 0,
+            "max": 32,
+            "total": 65
+          },
+          "bufferDeletes": {
+            "min": 0,
+            "max": 32,
+            "total": 65
+          },
+          "bufferAllocations": {
+            "min": 0,
+            "max": 32,
+            "total": 65
+          },
+          "drawcalls": {
+            "min": 0,
+            "max": 11,
+            "total": 57
+          },
+          "indices": {
+            "min": 0,
+            "max": 999000,
+            "total": 4562115
+          },
+          "arrayVertices": {
+            "min": 0,
+            "max": 4,
+            "total": 36
+          },
+          "bufferUploads": {
+            "min": 0,
+            "max": 33,
+            "total": 116
+          },
+          "bufferBytes": {
+            "min": 0,
+            "max": 4796768,
+            "total": 17108488
+          },
+          "uniformUploads": {
+            "min": 0,
+            "max": 11,
+            "total": 38
+          },
+          "uniformBytes": {
+            "min": 0,
+            "max": 1472,
+            "total": 5440
+          },
+          "arrayBufferBinds": {
+            "min": 0,
+            "max": 102,
+            "total": 440
+          },
+          "elementBufferBinds": {
+            "min": 0,
+            "max": 11,
+            "total": 49
+          },
+          "vertexAttribPointers": {
+            "min": 0,
+            "max": 81,
+            "total": 393
+          }
+        },
+        "visible": [0, 2400]
+      },
+      {
+        "kind": "strokes",
+        "variant": "ordinary",
+        "backend": "ecs",
+        "round": 1,
+        "samples": 12,
+        "engineMs": {
+          "p50": 16.100000000093132,
+          "p95": 41,
+          "total": 204.5
+        },
+        "operationToFrameMs": {
+          "p50": 22,
+          "p95": 56.4000000001397,
+          "total": 311.39999999990687
+        },
+        "native": {
+          "bufferCreates": {
+            "min": 0,
+            "max": 32,
+            "total": 67
+          },
+          "bufferDeletes": {
+            "min": 0,
+            "max": 32,
+            "total": 67
+          },
+          "bufferAllocations": {
+            "min": 0,
+            "max": 32,
+            "total": 67
+          },
+          "drawcalls": {
+            "min": 0,
+            "max": 11,
+            "total": 57
+          },
+          "indices": {
+            "min": 0,
+            "max": 999000,
+            "total": 4562115
+          },
+          "arrayVertices": {
+            "min": 0,
+            "max": 4,
+            "total": 36
+          },
+          "bufferUploads": {
+            "min": 0,
+            "max": 33,
+            "total": 116
+          },
+          "bufferBytes": {
+            "min": 0,
+            "max": 4796768,
+            "total": 17108488
+          },
+          "uniformUploads": {
+            "min": 0,
+            "max": 11,
+            "total": 38
+          },
+          "uniformBytes": {
+            "min": 0,
+            "max": 1472,
+            "total": 5440
+          },
+          "arrayBufferBinds": {
+            "min": 0,
+            "max": 102,
+            "total": 442
+          },
+          "elementBufferBinds": {
+            "min": 0,
+            "max": 11,
+            "total": 49
+          },
+          "vertexAttribPointers": {
+            "min": 0,
+            "max": 81,
+            "total": 393
+          }
+        },
+        "visible": [0, 2400]
+      }
+    ],
+    "raw": [
+      {
+        "path": "captures/workflow/control/workflow-input.json",
+        "bytes": 2084400,
+        "sha256": "5991b33850734e158b876c01d372ad8496b7bec0f969df3eccbc25c1df395e66"
+      },
+      {
+        "path": "captures/workflow/ordinary/workflow-input.json",
+        "bytes": 2084159,
+        "sha256": "de11c4f2848c92dfa74c13893d3e251c24eb43c472afc6373fcd9d62a1111722"
+      },
+      {
+        "path": "captures/workflow/diagnostic/workflow-input.json",
+        "bytes": 2162166,
+        "sha256": "ea4faf5aa9c65159a9bafa89338aedb11725150fbf3d5b034d610a710ac2a874"
+      },
+      {
+        "path": "captures/strokes/control/camera-replay-strokes.json",
+        "bytes": 2123317,
+        "sha256": "358d946c56905a8c0938724d32fea135e8fda5d2e92a544db64a4b3e843e2bc3"
+      },
+      {
+        "path": "captures/strokes/ordinary/camera-replay-strokes.json",
+        "bytes": 2123468,
+        "sha256": "906659d0e5a3839e3de04e68b26561e096be8f85278bf462f73351d20bee3312"
+      },
+      {
+        "path": "captures/strokes/diagnostic/camera-replay-strokes.json",
+        "bytes": 2224691,
+        "sha256": "a4f4e64d24fa06581c66f2a7ce0453a72a434f73c32ece63671d02af89c9ab24"
+      }
+    ]
+  },
+  "webkit": {
+    "checks": [
+      {
+        "kind": "workflow",
+        "ordinaryVsDiagnostic": "exact semantic/native/resource/geometry-call parity",
+        "ordinaryQualified": true,
+        "diagnosticRejected": true
+      },
+      {
+        "kind": "strokes",
+        "ordinaryVsDiagnostic": "exact semantic/native/resource/geometry-call parity",
+        "ordinaryQualified": true,
+        "diagnosticRejected": true
+      }
+    ],
+    "counts": [
+      {
+        "kind": "workflow",
+        "backend": "ecs",
+        "round": 0,
+        "packedCalls": 2,
+        "nodeSamples": 44,
+        "firstNodes": 0,
+        "unchangedGeometryNodes": 28,
+        "changedGeometryNodes": 16,
+        "unchangedGeometryBytes": 60120,
+        "unchangedPayloadBytes": 72144,
+        "placementChanges": 0,
+        "packedBytes": 114192,
+        "spanUploadBytes": 114144,
+        "capacityUploadBytes": 114144,
+        "capacityAllocations": 0,
+        "resident1m_hits": 28,
+        "resident1m_misses": 16,
+        "resident1m_invalidations": 16,
+        "resident1m_evictions": 0,
+        "resident1m_geometryBytes": 37376,
+        "resident1m_placementBytes": 25376,
+        "resident1m_fallbackBytes": 0,
+        "resident1m_fallbackPages": 0,
+        "resident1m_fallbackNodes": 0,
+        "resident1m_emptyNodes": 0,
+        "resident1m_peakBytes": 54656,
+        "resident4m_hits": 28,
+        "resident4m_misses": 16,
+        "resident4m_invalidations": 16,
+        "resident4m_evictions": 0,
+        "resident4m_geometryBytes": 37376,
+        "resident4m_placementBytes": 25376,
+        "resident4m_fallbackBytes": 0,
+        "resident4m_fallbackPages": 0,
+        "resident4m_fallbackNodes": 0,
+        "resident4m_emptyNodes": 0,
+        "resident4m_peakBytes": 54656,
+        "resident8m_hits": 28,
+        "resident8m_misses": 16,
+        "resident8m_invalidations": 16,
+        "resident8m_evictions": 0,
+        "resident8m_geometryBytes": 37376,
+        "resident8m_placementBytes": 25376,
+        "resident8m_fallbackBytes": 0,
+        "resident8m_fallbackPages": 0,
+        "resident8m_fallbackNodes": 0,
+        "resident8m_emptyNodes": 0,
+        "resident8m_peakBytes": 54656
+      },
+      {
+        "kind": "workflow",
+        "backend": "ecs",
+        "round": 1,
+        "packedCalls": 2,
+        "nodeSamples": 44,
+        "firstNodes": 0,
+        "unchangedGeometryNodes": 44,
+        "changedGeometryNodes": 0,
+        "unchangedGeometryBytes": 95160,
+        "unchangedPayloadBytes": 114192,
+        "placementChanges": 0,
+        "packedBytes": 114192,
+        "spanUploadBytes": 114144,
+        "capacityUploadBytes": 114144,
+        "capacityAllocations": 0,
+        "resident1m_hits": 44,
+        "resident1m_misses": 0,
+        "resident1m_invalidations": 0,
+        "resident1m_evictions": 0,
+        "resident1m_geometryBytes": 0,
+        "resident1m_placementBytes": 25376,
+        "resident1m_fallbackBytes": 0,
+        "resident1m_fallbackPages": 0,
+        "resident1m_fallbackNodes": 0,
+        "resident1m_emptyNodes": 0,
+        "resident1m_peakBytes": 54656,
+        "resident4m_hits": 44,
+        "resident4m_misses": 0,
+        "resident4m_invalidations": 0,
+        "resident4m_evictions": 0,
+        "resident4m_geometryBytes": 0,
+        "resident4m_placementBytes": 25376,
+        "resident4m_fallbackBytes": 0,
+        "resident4m_fallbackPages": 0,
+        "resident4m_fallbackNodes": 0,
+        "resident4m_emptyNodes": 0,
+        "resident4m_peakBytes": 54656,
+        "resident8m_hits": 44,
+        "resident8m_misses": 0,
+        "resident8m_invalidations": 0,
+        "resident8m_evictions": 0,
+        "resident8m_geometryBytes": 0,
+        "resident8m_placementBytes": 25376,
+        "resident8m_fallbackBytes": 0,
+        "resident8m_fallbackPages": 0,
+        "resident8m_fallbackNodes": 0,
+        "resident8m_emptyNodes": 0,
+        "resident8m_peakBytes": 54656
+      },
+      {
+        "kind": "strokes",
+        "backend": "core",
+        "round": 0,
+        "packedCalls": 38,
+        "nodeSamples": 8396,
+        "firstNodes": 0,
+        "unchangedGeometryNodes": 5988,
+        "changedGeometryNodes": 2408,
+        "unchangedGeometryBytes": 8752172,
+        "unchangedPayloadBytes": 8761280,
+        "placementChanges": 2144,
+        "packedBytes": 15202624,
+        "spanUploadBytes": 12664284,
+        "capacityUploadBytes": 12664284,
+        "capacityAllocations": 34,
+        "resident1m_hits": 1072,
+        "resident1m_misses": 7324,
+        "resident1m_invalidations": 0,
+        "resident1m_evictions": 7324,
+        "resident1m_geometryBytes": 13161536,
+        "resident1m_placementBytes": 3800656,
+        "resident1m_fallbackBytes": 0,
+        "resident1m_fallbackPages": 0,
+        "resident1m_fallbackNodes": 0,
+        "resident1m_emptyNodes": 0,
+        "resident1m_peakBytes": 1048576,
+        "resident4m_hits": 5082,
+        "resident4m_misses": 3314,
+        "resident4m_invalidations": 2344,
+        "resident4m_evictions": 970,
+        "resident4m_geometryBytes": 6040768,
+        "resident4m_placementBytes": 3800656,
+        "resident4m_fallbackBytes": 0,
+        "resident4m_fallbackPages": 0,
+        "resident4m_fallbackNodes": 0,
+        "resident4m_emptyNodes": 0,
+        "resident4m_peakBytes": 4194304,
+        "resident8m_hits": 5988,
+        "resident8m_misses": 2408,
+        "resident8m_invalidations": 2408,
+        "resident8m_evictions": 0,
+        "resident8m_geometryBytes": 4430720,
+        "resident8m_placementBytes": 3800656,
+        "resident8m_fallbackBytes": 0,
+        "resident8m_fallbackPages": 0,
+        "resident8m_fallbackNodes": 0,
+        "resident8m_emptyNodes": 0,
+        "resident8m_peakBytes": 4416512
+      },
+      {
+        "kind": "strokes",
+        "backend": "core",
+        "round": 1,
+        "packedCalls": 38,
+        "nodeSamples": 8396,
+        "firstNodes": 0,
+        "unchangedGeometryNodes": 5988,
+        "changedGeometryNodes": 2408,
+        "unchangedGeometryBytes": 8752172,
+        "unchangedPayloadBytes": 8761280,
+        "placementChanges": 2144,
+        "packedBytes": 15202624,
+        "spanUploadBytes": 12664284,
+        "capacityUploadBytes": 12664284,
+        "capacityAllocations": 34,
+        "resident1m_hits": 1072,
+        "resident1m_misses": 7324,
+        "resident1m_invalidations": 0,
+        "resident1m_evictions": 7324,
+        "resident1m_geometryBytes": 13161536,
+        "resident1m_placementBytes": 3800656,
+        "resident1m_fallbackBytes": 0,
+        "resident1m_fallbackPages": 0,
+        "resident1m_fallbackNodes": 0,
+        "resident1m_emptyNodes": 0,
+        "resident1m_peakBytes": 1048576,
+        "resident4m_hits": 5082,
+        "resident4m_misses": 3314,
+        "resident4m_invalidations": 2344,
+        "resident4m_evictions": 970,
+        "resident4m_geometryBytes": 6040768,
+        "resident4m_placementBytes": 3800656,
+        "resident4m_fallbackBytes": 0,
+        "resident4m_fallbackPages": 0,
+        "resident4m_fallbackNodes": 0,
+        "resident4m_emptyNodes": 0,
+        "resident4m_peakBytes": 4194304,
+        "resident8m_hits": 5988,
+        "resident8m_misses": 2408,
+        "resident8m_invalidations": 2408,
+        "resident8m_evictions": 0,
+        "resident8m_geometryBytes": 4430720,
+        "resident8m_placementBytes": 3800656,
+        "resident8m_fallbackBytes": 0,
+        "resident8m_fallbackPages": 0,
+        "resident8m_fallbackNodes": 0,
+        "resident8m_emptyNodes": 0,
+        "resident8m_peakBytes": 4416512
+      },
+      {
+        "kind": "strokes",
+        "backend": "ecs",
+        "round": 0,
+        "packedCalls": 38,
+        "nodeSamples": 8396,
+        "firstNodes": 0,
+        "unchangedGeometryNodes": 5988,
+        "changedGeometryNodes": 2408,
+        "unchangedGeometryBytes": 10098660,
+        "unchangedPayloadBytes": 12118392,
+        "placementChanges": 0,
+        "packedBytes": 17102952,
+        "spanUploadBytes": 13890036,
+        "capacityUploadBytes": 13890036,
+        "capacityAllocations": 34,
+        "resident1m_hits": 1072,
+        "resident1m_misses": 7324,
+        "resident1m_invalidations": 0,
+        "resident1m_evictions": 7324,
+        "resident1m_geometryBytes": 13161536,
+        "resident1m_placementBytes": 3800656,
+        "resident1m_fallbackBytes": 0,
+        "resident1m_fallbackPages": 0,
+        "resident1m_fallbackNodes": 0,
+        "resident1m_emptyNodes": 0,
+        "resident1m_peakBytes": 1048576,
+        "resident4m_hits": 5082,
+        "resident4m_misses": 3314,
+        "resident4m_invalidations": 2344,
+        "resident4m_evictions": 970,
+        "resident4m_geometryBytes": 6040768,
+        "resident4m_placementBytes": 3800656,
+        "resident4m_fallbackBytes": 0,
+        "resident4m_fallbackPages": 0,
+        "resident4m_fallbackNodes": 0,
+        "resident4m_emptyNodes": 0,
+        "resident4m_peakBytes": 4194304,
+        "resident8m_hits": 5988,
+        "resident8m_misses": 2408,
+        "resident8m_invalidations": 2408,
+        "resident8m_evictions": 0,
+        "resident8m_geometryBytes": 4430720,
+        "resident8m_placementBytes": 3800656,
+        "resident8m_fallbackBytes": 0,
+        "resident8m_fallbackPages": 0,
+        "resident8m_fallbackNodes": 0,
+        "resident8m_emptyNodes": 0,
+        "resident8m_peakBytes": 4416512
+      },
+      {
+        "kind": "strokes",
+        "backend": "ecs",
+        "round": 1,
+        "packedCalls": 38,
+        "nodeSamples": 8396,
+        "firstNodes": 0,
+        "unchangedGeometryNodes": 5988,
+        "changedGeometryNodes": 2408,
+        "unchangedGeometryBytes": 10098660,
+        "unchangedPayloadBytes": 12118392,
+        "placementChanges": 0,
+        "packedBytes": 17102952,
+        "spanUploadBytes": 13890036,
+        "capacityUploadBytes": 13890036,
+        "capacityAllocations": 34,
+        "resident1m_hits": 1072,
+        "resident1m_misses": 7324,
+        "resident1m_invalidations": 0,
+        "resident1m_evictions": 7324,
+        "resident1m_geometryBytes": 13161536,
+        "resident1m_placementBytes": 3800656,
+        "resident1m_fallbackBytes": 0,
+        "resident1m_fallbackPages": 0,
+        "resident1m_fallbackNodes": 0,
+        "resident1m_emptyNodes": 0,
+        "resident1m_peakBytes": 1048576,
+        "resident4m_hits": 5082,
+        "resident4m_misses": 3314,
+        "resident4m_invalidations": 2344,
+        "resident4m_evictions": 970,
+        "resident4m_geometryBytes": 6040768,
+        "resident4m_placementBytes": 3800656,
+        "resident4m_fallbackBytes": 0,
+        "resident4m_fallbackPages": 0,
+        "resident4m_fallbackNodes": 0,
+        "resident4m_emptyNodes": 0,
+        "resident4m_peakBytes": 4194304,
+        "resident8m_hits": 5988,
+        "resident8m_misses": 2408,
+        "resident8m_invalidations": 2408,
+        "resident8m_evictions": 0,
+        "resident8m_geometryBytes": 4430720,
+        "resident8m_placementBytes": 3800656,
+        "resident8m_fallbackBytes": 0,
+        "resident8m_fallbackPages": 0,
+        "resident8m_fallbackNodes": 0,
+        "resident8m_emptyNodes": 0,
+        "resident8m_peakBytes": 4416512
+      }
+    ],
+    "raw": [
+      {
+        "path": "webkit/workflow/ordinary/workflow-input.json",
+        "bytes": 47685,
+        "sha256": "45b7942a5a01601f5cc14dcadac2b23225684441294a666507b687dcbdf13cd5"
+      },
+      {
+        "path": "webkit/workflow/diagnostic/workflow-input.json",
+        "bytes": 62903,
+        "sha256": "899b248afdeed25bbcae514643df6c00002c9d778237884f5901d1b0d6c6c00d"
+      },
+      {
+        "path": "webkit/strokes/ordinary/camera-replay-strokes.json",
+        "bytes": 2117274,
+        "sha256": "83e1f64e760bfbb7fc362d93245776e0bebec2a70758ec9b5f64f52a968295dd"
+      },
+      {
+        "path": "webkit/strokes/diagnostic/camera-replay-strokes.json",
+        "bytes": 2218994,
+        "sha256": "9b11ff61c9f9c94917409890e4ecbeff03f378ba1c19915d7d2e9d05f4c0afd6"
+      }
+    ],
+    "sources": [
+      {
+        "kind": "workflow",
+        "variant": "ordinary",
+        "source": {
+          "head": "a600cc4c2941b0f7ca1669e6394b0e3028953695",
+          "tree": "8796dbf8cfe9895555459cbdfb06382ccb231c1b",
+          "dirty": false
+        },
+        "browser": "26.5",
+        "node": "v24.22.3"
+      },
+      {
+        "kind": "workflow",
+        "variant": "diagnostic",
+        "source": {
+          "head": "a600cc4c2941b0f7ca1669e6394b0e3028953695",
+          "tree": "8796dbf8cfe9895555459cbdfb06382ccb231c1b",
+          "dirty": false
+        },
+        "browser": "26.5",
+        "node": "v24.22.3"
+      },
+      {
+        "kind": "strokes",
+        "variant": "ordinary",
+        "source": {
+          "head": "a600cc4c2941b0f7ca1669e6394b0e3028953695",
+          "tree": "8796dbf8cfe9895555459cbdfb06382ccb231c1b",
+          "dirty": false
+        },
+        "browser": "26.5",
+        "node": "v24.22.3"
+      },
+      {
+        "kind": "strokes",
+        "variant": "diagnostic",
+        "source": {
+          "head": "a600cc4c2941b0f7ca1669e6394b0e3028953695",
+          "tree": "8796dbf8cfe9895555459cbdfb06382ccb231c1b",
+          "dirty": false
+        },
+        "browser": "26.5",
+        "node": "v24.22.3"
+      }
+    ]
+  }
+}

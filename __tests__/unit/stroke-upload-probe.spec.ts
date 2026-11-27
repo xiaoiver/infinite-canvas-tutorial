@@ -1,3 +1,4 @@
+import { createStrokeResidencyModel } from '../browser/fixtures/stroke-residency-model';
 import { createStrokeUploadProbe } from '../browser/fixtures/stroke-upload-probe';
 import { packStrokeInstances } from '../../packages/core/src/utils/stroke-batching';
 
@@ -7,6 +8,7 @@ for (const backend of ['core', 'ecs'] as const)
     beforeEach(() => {
       oldWindow = globalThis.window;
       globalThis.window = {} as any;
+      (window as any).createStrokeResidencyModel = createStrokeResidencyModel;
       createStrokeUploadProbe();
     });
     afterEach(() => {
@@ -73,11 +75,15 @@ for (const backend of ['core', 'ecs'] as const)
       const same = frame();
       expect(same.unchangedGeometryNodes).toBe(1);
       expect(same.firstNodes).toBe(0);
+      expect(same.resident4m_hits).toBe(1);
+      expect(same.resident4m_geometryBytes).toBe(0);
       expect(same.spanUploadBytes).toBe(0);
       n.placement[0] = 10;
       const moved = frame();
       expect(moved.unchangedGeometryNodes).toBe(1);
       expect(moved.placementChanges).toBe(1);
+      expect(moved.resident4m_hits).toBe(1);
+      expect(moved.resident4m_placementBytes).toBe(16);
       expect(moved.unchangedPayloadBytes).toBe(0);
       expect(moved.unchangedGeometryBytes).toBe((12 + stride) * 4);
       expect(moved.spanUploadBytes).toBe(4);
@@ -88,7 +94,9 @@ for (const backend of ['core', 'ecs'] as const)
       n.points[3] = 1 + 1e-9;
       expect(frame().unchangedGeometryNodes).toBe(1);
       n.points[3] = 2;
-      expect(frame().changedGeometryNodes).toBe(1);
+      const changed = frame();
+      expect(changed.changedGeometryNodes).toBe(1);
+      expect(changed.resident4m_misses).toBe(1);
       n.points[0] = -0;
       expect(frame().changedGeometryNodes).toBe(1);
     });
@@ -136,6 +144,7 @@ for (const backend of ['core', 'ecs'] as const)
         Base.prototype.createGeometry,
       );
       expect((window as any).strokeUploadProbe).toBeUndefined();
+      expect((window as any).createStrokeResidencyModel).toBeUndefined();
     });
     it('unwinds failures without leaving an active stack and rejects duplicate installation', () => {
       const { draw, probe, Batch } = setup();
