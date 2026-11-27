@@ -221,9 +221,47 @@ export function summarizeContinuousGesture(g) {
     allocatedBufferBytesAfter: final.state.allocatedBufferBytes,
   };
 }
-export function summarizeWorkflowContinuous(c) {
+function summarizeCapture(c, timeline) {
   assert.equal(c.schema, 1);
-  assert.equal(c.mode, 'continuous-input');
+  assert.equal(
+    c.mode,
+    timeline ? 'continuous-input-timeline' : 'continuous-input',
+  );
+  if (timeline) {
+    assert(
+      c.timeline?.captureKind === 'trace-only' &&
+        c.timeline.scope === 'continuous-input' &&
+        c.timeline.stopped === true &&
+        c.timeline.marksCleared === true,
+      'Continuous trace lifecycle not qualified',
+    );
+    const names = new Set();
+    for (const g of c.gestures)
+      for (const e of g.stream.events) {
+        const m = e.traceMark;
+        assert(
+          m &&
+            typeof m.name === 'string' &&
+            Number.isFinite(m.pageMs) &&
+            m.pageMs >= e.receivedAt,
+          'Missing input trace mark',
+        );
+        assert(!names.has(m.name), 'Duplicate input mark');
+        names.add(m.name);
+      }
+  } else {
+    assert.equal(
+      c.timeline,
+      undefined,
+      'Timeline captures cannot qualify as ordinary',
+    );
+    assert(
+      c.gestures.every((g) =>
+        g.stream.events.every((e) => e.traceMark === undefined),
+      ),
+      'Input marks cannot qualify as ordinary',
+    );
+  }
   assert.equal(c.workload, 'workflow-continuous-wheel');
   assert([24, 2400].includes(c.count));
   assert.equal(c.source.dirty, false, 'Clean source required');
@@ -261,4 +299,12 @@ export function summarizeWorkflowContinuous(c) {
     node: c.node,
     gestures: c.gestures.map(summarizeContinuousGesture),
   };
+}
+
+export function summarizeWorkflowContinuous(c) {
+  return summarizeCapture(c, false);
+}
+/** Diagnostic summaries retain their mode and are never ordinary timing. */
+export function summarizeWorkflowContinuousTrace(c) {
+  return { mode: c.mode, ...summarizeCapture(c, true) };
 }

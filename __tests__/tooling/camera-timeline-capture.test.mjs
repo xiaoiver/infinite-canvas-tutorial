@@ -50,13 +50,15 @@ async function capture(
   process.env.CAMERA_TIMELINE_DIR = directory;
   if (kind === undefined) delete process.env.CAMERA_TIMELINE_MODE;
   else process.env.CAMERA_TIMELINE_MODE = kind;
-  const commands = [];
+  const commands = [],
+    traceStarts = [];
   let detachCount = 0;
   class Session extends EventEmitter {
     async detach() {
       detachCount++;
     }
-    async send(method) {
+    async send(method, params) {
+      if (method === 'Tracing.start') traceStarts.push(params);
       commands.push(method);
       if (method === fail) throw new Error('injected failure');
       if (method === 'Performance.getMetrics')
@@ -126,6 +128,7 @@ async function capture(
     await action({
       page,
       commands,
+      traceStarts,
       read,
       exists: (suffix) => existsSync(join(directory, `test.${suffix}.json`)),
       detached: () => detachCount,
@@ -225,4 +228,29 @@ test('aborting an unfinished trace is idempotent and creates no report', () =>
     assert.equal(commands.filter((c) => c === 'Tracing.end').length, 1);
     assert.equal(exists('raw'), false);
     assert.equal(exists('summary'), false);
+  }));
+
+test('continuous scope explicitly selects trace-only input/compositor categories', () =>
+  capture('trace', async ({ page, commands, traceStarts, read, detached }) => {
+    const timeline = await startCameraTimeline(
+      page,
+      'test',
+      'continuous-input',
+    );
+    await timeline.stop(windows);
+    assert.equal(read('raw').scope, 'continuous-input');
+    assert.equal(read('raw').categories, traceStarts[0].categories);
+    for (const category of ['cc', 'gpu', 'viz', 'input', 'latencyInfo'])
+      assert(traceStarts[0].categories.split(',').includes(category));
+    assert(!commands.some((c) => c.startsWith('Profiler.')));
+    assert.equal(detached(), 1);
+  }));
+test('continuous scope refuses the profiler before opening a session', () =>
+  capture('profile', async ({ page, commands, detached }) => {
+    await assert.rejects(
+      startCameraTimeline(page, 'test', 'continuous-input'),
+      /trace-only/,
+    );
+    assert.deepEqual(commands, []);
+    assert.equal(detached(), 0);
   }));

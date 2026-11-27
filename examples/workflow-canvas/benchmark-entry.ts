@@ -138,6 +138,13 @@ const wheelInput = inputReplay<ReturnType<typeof wheelSnapshot>, WheelSample>(
   wheelReplay,
   () => float32ReplayTarget(window.workflowDemo.snapshot().view),
 );
+const continuousTrace =
+  new URLSearchParams(location.search).get('continuousTrace') === '1';
+let continuousTraceLabel = '';
+const continuousMarks: string[] = [];
+function clearContinuousMarks() {
+  for (const name of continuousMarks.splice(0)) performance.clearMarks(name);
+}
 const continuous = continuousWheel<
   WheelSample,
   ReturnType<typeof native.snapshot>
@@ -156,6 +163,15 @@ const continuous = continuousWheel<
   },
   () => performance.now(),
   float32ReplayTarget,
+  continuousTrace
+    ? (sequence) => {
+        const mark = performance.mark(
+          `continuous-wheel-${continuousTraceLabel}-${sequence}`,
+        );
+        continuousMarks.push(mark.name);
+        return { name: mark.name, pageMs: mark.startTime };
+      }
+    : undefined,
 );
 let continuousDeltaY = 0;
 function observeWheel(event: WheelEvent) {
@@ -182,6 +198,7 @@ ECS.App.prototype.run = async function () {
   runtime.app = this;
   runtime.api!.onDestroy(() => {
     continuous.dispose();
+    clearContinuousMarks();
     replay.dispose();
     wheelInput.dispose();
   });
@@ -337,7 +354,10 @@ async function end() {
   }
 }
 const harness = {
-  startContinuousWheel() {
+  startContinuousWheel(label = '') {
+    if (continuousTrace && !/^[a-z0-9-]+$/i.test(label))
+      throw new Error('A diagnostic gesture label is required');
+    continuousTraceLabel = label;
     if (
       detailedWheelPhases ||
       phases ||
@@ -542,6 +562,7 @@ const harness = {
     if (disposed) return;
     disposed = true;
     continuous.dispose();
+    clearContinuousMarks();
     replay.dispose();
     wheelInput.dispose();
     canvas.removeEventListener('wheel', observeWheel, true);
