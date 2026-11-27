@@ -1,3 +1,4 @@
+import { qualifyWorkflowComposition } from './workflow-composition-tools.mjs';
 import {
   sameStrokeTextureScope,
   qualifyStrokeTexture,
@@ -29,7 +30,14 @@ function view(v) {
     'Invalid logical view',
   );
 }
-function qualify(capture) {
+function qualify(capture, composition = false) {
+  if (composition) qualifyWorkflowComposition(capture);
+  else
+    assert.equal(
+      capture.composition,
+      undefined,
+      'Composition captures cannot qualify as ordinary timing',
+    );
   assert.equal(capture.schema, 1, 'Unsupported input schema');
   assert.equal(
     capture.workload,
@@ -37,7 +45,9 @@ function qualify(capture) {
     'Trusted-wheel workload required',
   );
   assert(
-    capture.mode === undefined &&
+    (composition
+      ? capture.mode === 'workflow-composition-diagnostic'
+      : capture.mode === undefined) &&
       !('geometryWork' in capture) &&
       !('memory' in capture),
     'Diagnostic captures cannot qualify as ordinary timing',
@@ -98,6 +108,12 @@ function qualify(capture) {
     );
     for (const [i, step] of round.steps.entries()) {
       assert(!('geometryWork' in step), 'Diagnostic step cannot qualify');
+      if (!composition)
+        assert.equal(
+          step.compositionHost,
+          undefined,
+          'Composition host clocks cannot qualify as ordinary timing',
+        );
       assert.equal(
         step.strokeUploads,
         undefined,
@@ -214,7 +230,16 @@ function qualify(capture) {
       ...s.requested,
     }));
     summarizeReplay({
-      ...capture,
+      // Adapt the validated input workload to the shared frame-clock schema.
+      // The original diagnostic capture retains its mode and CSS metadata.
+      schema: capture.schema,
+      workload: capture.workload,
+      source: capture.source,
+      viewport: capture.viewport,
+      browser: capture.browser,
+      node: capture.node,
+      strokeTexture: capture.strokeTexture,
+      textureProbeRestored: capture.textureProbeRestored,
       trace,
       traceHash: cameraTraceHash(capture.workload, trace, capture.viewport),
       results: [
@@ -240,7 +265,7 @@ function qualify(capture) {
   }
   qualifyStrokeTexture(capture);
 }
-function summarize(capture) {
+function summarize(capture, composition = false) {
   return capture.rounds.map((round) => {
     const frames = round.steps.map((s) => s.frames[0]);
     const stats = (values) => ({
@@ -249,6 +274,24 @@ function summarize(capture) {
     });
     return {
       index: round.index,
+      ...(composition
+        ? {
+            hostCommandToResultMs: stats(
+              round.steps.map(
+                (s) =>
+                  s.compositionHost.resultObservedAt -
+                  s.compositionHost.dispatchedAt,
+              ),
+            ),
+            hostAcknowledgementMs: stats(
+              round.steps.map(
+                (s) =>
+                  s.compositionHost.acknowledgedAt -
+                  s.compositionHost.dispatchedAt,
+              ),
+            ),
+          }
+        : {}),
       steps: frames.length,
       engineWallMs: stats(frames.map((f) => f.elapsed)),
       inputToFrameMs: stats(round.steps.map((s) => s.inputToFrameMs)),
@@ -273,9 +316,9 @@ function summarize(capture) {
   });
 }
 /** Strict workload parity, not a statistical speedup or physical-FPS claim. */
-export function compareWorkflowInputs(before, after) {
-  qualify(before);
-  qualify(after);
+function compare(before, after, composition = false) {
+  qualify(before, composition);
+  qualify(after, composition);
   sameStrokeTextureScope(before, after);
   for (const k of [
     'schema',
@@ -320,7 +363,46 @@ export function compareWorkflowInputs(before, after) {
   return {
     matchedSteps: before.deltas.length * 2,
     nativeParity: 'all counters',
-    before: { source: before.source, rounds: summarize(before) },
-    after: { source: after.source, rounds: summarize(after) },
+    before: { source: before.source, rounds: summarize(before, composition) },
+    after: { source: after.source, rounds: summarize(after, composition) },
+  };
+}
+
+export function compareWorkflowInputs(before, after) {
+  return compare(before, after);
+}
+/** CSS-only ablations retain a distinct result mode and require the same source/GPU. */
+export function compareWorkflowCompositions(control, candidate) {
+  assert.equal(
+    control.composition?.condition,
+    'normal',
+    'Normal composition control required',
+  );
+  assert.deepEqual(
+    control.source,
+    candidate.source,
+    'Composition source differs',
+  );
+  assert.deepEqual(
+    control.composition?.graphics,
+    candidate.composition?.graphics,
+    'Graphics identity differs',
+  );
+  return {
+    mode: 'workflow-composition-diagnostic',
+    conditions: [
+      control.composition.condition,
+      candidate.composition.condition,
+    ],
+    ...compare(control, candidate, true),
+  };
+}
+export function summarizeWorkflowComposition(capture) {
+  qualify(capture, true);
+  return {
+    mode: capture.mode,
+    condition: capture.composition.condition,
+    source: capture.source,
+    rounds: summarize(capture, true),
   };
 }

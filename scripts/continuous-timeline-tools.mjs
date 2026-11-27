@@ -9,6 +9,7 @@ export const CONTINUOUS_TRACE_CATEGORIES =
   'toplevel,devtools.timeline,v8,blink.user_timing,cc,gpu,viz,input,latencyInfo,benchmark';
 export function continuousTimelineMode(env = process.env) {
   for (const key of [
+    'WORKFLOW_COMPOSITION_CONDITION',
     'CAMERA_PHASES',
     'STROKE_UPLOAD_DIAGNOSTIC',
     'STROKE_TEXTURE_BENCH',
