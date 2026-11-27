@@ -160,6 +160,28 @@ test('engine/gap windows partition actual receipt spans and retain per-thread un
   ); // Nested durations must not sum to 16.
   assert(gpu.every((t) => t.thread === 'GPU service'));
 });
+test('pre-receipt idle executions do not enlarge the analyzed interaction span', () => {
+  const windows = continuousTimelineWindows({
+    gestures: [
+      {
+        round: 0,
+        direction: 'in',
+        stream: {
+          events: [{ receivedAt: 10 }],
+          frames: [
+            { startedAt: 0, completedAt: 5 },
+            { startedAt: 8, completedAt: 15 },
+            { startedAt: 20, completedAt: 30 },
+          ],
+        },
+      },
+    ],
+  });
+  assert.deepEqual(
+    windows.map(({ kind, startedAt, completedAt }) => [kind, startedAt, completedAt]),
+    [['engine', 10, 15], ['gap', 15, 20], ['engine', 20, 30]],
+  );
+});
 test('outside-task time stays unassigned even with concurrent GPU-thread events', () => {
   const { c, trace } = capture();
   trace.traceEvents.find((e) => e.name === 'RunTask').dur = 5000;

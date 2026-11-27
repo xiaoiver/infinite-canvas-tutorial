@@ -22,7 +22,7 @@ export function continuousTimelineMode(env = process.env) {
   );
   return true;
 }
-/** Partition receipt-to-final-completion spans, clipping only a pre-input first frame. */
+/** Partition receipt-to-final-completion spans; earlier idle frames remain outside. */
 export function continuousTimelineWindows(capture) {
   const windows = [];
   let previousEnd = -Infinity;
@@ -44,10 +44,11 @@ export function continuousTimelineWindows(capture) {
         Number.isFinite(f.startedAt) &&
           Number.isFinite(f.completedAt) &&
           f.completedAt >= f.startedAt &&
-          f.startedAt >= frameEnd &&
-          f.completedAt >= first,
+          f.startedAt >= frameEnd,
         'Invalid/overlapping frame windows',
       );
+      frameEnd = f.completedAt;
+      if (f.completedAt <= first) continue;
       if (f.startedAt > cursor)
         windows.push({
           id: `${gesture}/gap/${index}`,
@@ -65,7 +66,7 @@ export function continuousTimelineWindows(capture) {
           startedAt,
           completedAt: f.completedAt,
         });
-      cursor = frameEnd = f.completedAt;
+      cursor = f.completedAt;
     }
     previousEnd = cursor;
   }
