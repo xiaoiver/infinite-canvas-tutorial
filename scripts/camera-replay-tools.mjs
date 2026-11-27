@@ -52,8 +52,18 @@ function rows(capture) {
     cameraTraceHash(capture.workload, capture.trace, capture.viewport),
     'Trace hash differs',
   );
+  assert.equal(
+    capture.uploadProbeRestored,
+    undefined,
+    'Stroke upload diagnostics cannot qualify as ordinary timing',
+  );
   const out = new Map();
   for (const result of capture.results) {
+    assert.equal(
+      result.uploadProbeRestored,
+      undefined,
+      'Stroke upload diagnostics cannot qualify as ordinary timing',
+    );
     assert.equal(result.documentSame, true, 'Replay changed the document');
     assert.equal(result.teardown, 'passed', 'Teardown not qualified');
     for (const round of result.rounds) {
@@ -63,6 +73,11 @@ function rows(capture) {
         'Pose order differs',
       );
       for (const [i, step] of round.steps.entries()) {
+        assert.equal(
+          step.strokeUploads,
+          undefined,
+          'Stroke upload diagnostics cannot qualify as ordinary timing',
+        );
         const { id, ...view } = capture.trace[i];
         assert.deepEqual(step.requested, view, 'Requested camera differs');
         assert(step.frames.length > 0, 'Missing completed frame');

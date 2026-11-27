@@ -1,3 +1,8 @@
+import {
+  strokeUploadMode,
+  summarizeStrokeUploads,
+} from './stroke-upload-tools.mjs';
+import { installStrokeUploadProbe } from '../__tests__/browser/fixtures/stroke-upload-probe';
 import { cameraPhaseMode, sumCameraPhases } from './camera-phase-tools.mjs';
 import { startCameraTimeline } from './camera-timeline';
 import { test, expect } from '@playwright/test';
@@ -21,13 +26,16 @@ declare global {
 }
 test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
   const phaseMode = cameraPhaseMode();
+  const uploadMode = strokeUploadMode();
   const git = (...args: string[]) =>
     execFileSync('git', args, { encoding: 'utf8' }).trim();
   const trace = fixedCameraTrace('strokes'),
     viewport = { width: 1000, height: 760, dpr: 1 };
   const capture = {
     schema: CAMERA_REPLAY_VERSION,
-    mode: phaseMode
+    mode: uploadMode
+      ? 'stroke-upload-diagnostic'
+      : phaseMode
       ? 'camera-phase-diagnostic'
       : process.env.CAMERA_TIMELINE_DIR
       ? 'camera-timeline-diagnostic'
@@ -58,6 +66,7 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
     page.on('pageerror', (e) => errors.push(e.message));
     let timeline: Awaited<ReturnType<typeof startCameraTimeline>>;
     try {
+      if (uploadMode) await installStrokeUploadProbe(page);
       await page.addInitScript(installProbes, { resourceStacks: false });
       await page.goto(
         (backend === 'core'
@@ -92,6 +101,7 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
         rounds: [] as any[],
         documentSame: false,
         teardown: 'pending',
+        uploadProbeRestored: undefined as boolean | undefined,
       };
       capture.results.push(result);
       timeline = await startCameraTimeline(page, backend);
@@ -99,6 +109,10 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
         const round = { index, steps: [] as any[] };
         result.rounds.push(round);
         for (const { id, ...view } of trace) {
+          if (uploadMode)
+            await page.evaluate(() =>
+              (window as any).strokeUploadProbe.begin(),
+            );
           const step = await page.evaluate(
             async ({ backend, view }) =>
               backend === 'core'
@@ -113,6 +127,10 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
             expect(step.frames.at(-1)!.data.visible).toBe(2400);
           if (id.endsWith('idle'))
             expect(step.frames.at(-1)!.data.native.drawcalls).toBe(0);
+          if (uploadMode)
+            (step as any).strokeUploads = await page.evaluate(() =>
+              (window as any).strokeUploadProbe.take(),
+            );
           round.steps.push({ id, ...step });
           save();
         }
@@ -138,6 +156,10 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
         ),
       ).toEqual(document);
       result.documentSame = true;
+      if (uploadMode)
+        result.uploadProbeRestored = await page.evaluate(() =>
+          (window as any).strokeUploadProbe.dispose(),
+        );
       const baseline = await page.evaluate(
         async (b) =>
           b === 'core'
@@ -161,6 +183,7 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
       await page.close();
     }
   }
+  if (uploadMode) console.log(JSON.stringify(summarizeStrokeUploads(capture)));
   if (!capture.mode) console.log(JSON.stringify(summarizeReplay(capture)));
   if (phaseMode)
     console.log(

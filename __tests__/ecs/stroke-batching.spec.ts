@@ -363,3 +363,12 @@ orderedBatchPagesContract('ECS stroke', () => {
     dispose: () => batch.destroy(),
   };
 });
+
+import { strokePageCapacityContract } from '../contracts/stroke-page-buffers';
+strokePageCapacityContract(
+  () => path().entity,
+  (shape) => {
+    shape.read(GlobalTransform).matrix.m20 += 9;
+  },
+  (device) => new StrokeBatch(device, null, null, null, false, 0, null),
+);

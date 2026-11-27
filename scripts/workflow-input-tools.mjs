@@ -38,6 +38,11 @@ function qualify(capture) {
       !('memory' in capture),
     'Diagnostic captures cannot qualify as ordinary timing',
   );
+  assert.equal(
+    capture.uploadProbeRestored,
+    undefined,
+    'Stroke upload diagnostics cannot qualify as ordinary timing',
+  );
   assert([24, 2400].includes(capture.count), 'Unsupported node count');
   assert.equal(capture.dpr, 1, 'DPR 1 protocol required');
   assert(
@@ -89,6 +94,11 @@ function qualify(capture) {
     );
     for (const [i, step] of round.steps.entries()) {
       assert(!('geometryWork' in step), 'Diagnostic step cannot qualify');
+      assert.equal(
+        step.strokeUploads,
+        undefined,
+        'Stroke upload diagnostics cannot qualify as ordinary timing',
+      );
       assert.equal(step.input.isTrusted, true, 'Native trusted input required');
       assert.equal(step.input.deltaMode, 0, 'Pixel wheel input required');
       assert.equal(step.input.deltaX, 0, 'Unexpected horizontal input');

@@ -220,3 +220,12 @@ orderedBatchPagesContract<Shape>('Core stroke', () => {
     },
   };
 });
+
+import { strokePageCapacityContract } from '../contracts/stroke-page-buffers';
+strokePageCapacityContract(
+  path,
+  (shape) => {
+    shape.worldTransform.tx += 9;
+  },
+  (device) => new StrokeBatch(device, null, null, false, 0),
+);

@@ -103,7 +103,7 @@ export function strokeReuseContract(
     expect(draw.vertexBufferDatas[0]).toEqual(new Float32Array(draw.pointsBuffer));
     draw.destroy();
   });
-  it('keeps fixed buffers through edits, replaces only dynamic pairs, and releases once', () => {
+  it('keeps fixed buffers and retained capacity through edits, resizes pairs, and releases once', () => {
     const { device, buffers } = resources();
     const shape = makePath(),
       draw = makeDraw(device);
@@ -114,7 +114,7 @@ export function strokeReuseContract(
     const index = draw.indexBuffer,
       vertices = draw.vertexBuffers[5];
     for (let i = 0; i < 3; i++) draw.createGeometry();
-    expect(buffers).toHaveLength(10);
+    expect(buffers).toHaveLength(4);
     expect(index.destroy).not.toHaveBeenCalled();
     expect(vertices.destroy).not.toHaveBeenCalled();
     const long =
@@ -123,7 +123,7 @@ export function strokeReuseContract(
     changePath(shape, long);
     prepare(draw, shape);
     draw.createGeometry();
-    expect(buffers).toHaveLength(12);
+    expect(buffers).toHaveLength(6);
     expect(draw.indexBuffer).toBe(index);
     expect(draw.vertexBuffers[5]).toBe(vertices);
     expect(
@@ -132,12 +132,12 @@ export function strokeReuseContract(
     changePath(shape, 'M0 0 L10 10');
     prepare(draw, shape);
     draw.createGeometry();
-    expect(buffers).toHaveLength(14);
+    expect(buffers).toHaveLength(8);
     draw.destroy();
     draw.destroy();
     expect(buffers.every((b) => b.destroy.mock.calls.length === 1)).toBe(true);
     draw.submit(null, null, {}, null);
-    expect(buffers).toHaveLength(14);
+    expect(buffers).toHaveLength(8);
   });
   it('rolls back partial dynamic allocation without destroying the old page, then retries cleanly', () => {
     const { device, buffers, allocate } = resources();

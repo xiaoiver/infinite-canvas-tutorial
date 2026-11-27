@@ -144,3 +144,16 @@ test('rejects unlabelled detailed phase instrumentation while retaining legacy p
   b.results[0].rounds[0].steps[0].frames[0].data.phaseDetail = 'camera';
   assert.throws(() => compareReplays(a, b), /Detailed phase diagnostics/);
 });
+
+test('rejects upload counters or restoration markers even when the diagnostic mode is missing', () => {
+  for (const mutate of [
+    (x) => (x.uploadProbeRestored = true),
+    (x) => {
+      x.results[0].rounds[0].steps[0].strokeUploads = { packedCalls: 1 };
+    },
+  ]) {
+    const x = capture();
+    mutate(x);
+    assert.throws(() => compareReplays(x, x), /upload diagnostics/);
+  }
+});
