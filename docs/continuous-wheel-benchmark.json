@@ -1,0 +1,1347 @@
+{
+  "schema": 1,
+  "kind": "continuous-input-characterization-not-a-speedup-comparison",
+  "measuredSource": {
+    "localCommit": "f6846773fc78d01294f3e5e2326d9e9f7819dcee",
+    "publicCommit": "4bad94237f83667501c8383d4fb2e8d167452f9a",
+    "tree": "1544dd1aaa14c841fbb10f6b224d3c2bb997f952",
+    "base": "0d4842f57337801baa42c731b34a74d9de8c76dd"
+  },
+  "fixedProtocolAudit": {
+    "matchedWorkflowFrames": 40,
+    "matchedStrokeFrames": 48,
+    "parity": "exact native/resource/semantic/geometry/phase call counts; canonical clock/document/teardown qualification",
+    "fingerprints": {
+      "beforeWorkflow": {
+        "path": ".test-results/page-rebuild-baseline/workflow/workflow-input.json",
+        "bytes": 2084771,
+        "sha256": "39207090856e202b54175e8ecc063ecbd1e9cc7d49e67feb7a5dc023ad96721b",
+        "source": {
+          "head": "0d4842f57337801baa42c731b34a74d9de8c76dd",
+          "tree": "b348bd1561bfe728036cd51aca69865d353ac2db",
+          "dirty": false
+        }
+      },
+      "afterWorkflow": {
+        "path": ".test-results/continuous-evaluation/fixed-workflow/workflow-input.json",
+        "bytes": 2084535,
+        "sha256": "2d869e196d6ce1368615d11ed0f4f8d9c3f1c10b89d9602522d9be57c6b50d40",
+        "source": {
+          "head": "f6846773fc78d01294f3e5e2326d9e9f7819dcee",
+          "tree": "1544dd1aaa14c841fbb10f6b224d3c2bb997f952",
+          "dirty": false
+        }
+      },
+      "beforeStrokes": {
+        "path": ".test-results/page-rebuild-baseline/strokes/camera-replay-strokes.json",
+        "bytes": 2123591,
+        "sha256": "d722114e8504468c4e3d4be3ab41cac2405d0df14ec913fb489f17c7d0534b4a",
+        "source": {
+          "head": "0d4842f57337801baa42c731b34a74d9de8c76dd",
+          "tree": "b348bd1561bfe728036cd51aca69865d353ac2db",
+          "dirty": false
+        }
+      },
+      "afterStrokes": {
+        "path": ".test-results/continuous-evaluation/fixed-strokes/camera-replay-strokes.json",
+        "bytes": 2123312,
+        "sha256": "b83cd9d02e8376cae0aad5c1bba5e35d0c9832740508bbaab05c3655f6bd57af",
+        "source": {
+          "head": "f6846773fc78d01294f3e5e2326d9e9f7819dcee",
+          "tree": "1544dd1aaa14c841fbb10f6b224d3c2bb997f952",
+          "dirty": false
+        }
+      }
+    }
+  },
+  "captures": [
+    {
+      "label": "chromium-24",
+      "raw": {
+        "path": ".test-results/continuous-smoke/workflow-continuous.json",
+        "bytes": 61983,
+        "sha256": "1722e79e8f0310f7754023f9f34eb9c8296fb6dfd939358dec93e2d5aa5b44f1"
+      },
+      "source": {
+        "head": "f6846773fc78d01294f3e5e2326d9e9f7819dcee",
+        "tree": "1544dd1aaa14c841fbb10f6b224d3c2bb997f952",
+        "dirty": false
+      },
+      "count": 24,
+      "browser": "140.0.7339.186",
+      "node": "v24.22.3",
+      "gestures": [
+        {
+          "round": 0,
+          "direction": "in",
+          "hostCommands": 8,
+          "receivedEvents": 7,
+          "coalescedCommands": 1,
+          "deltaSum": -160,
+          "hostDispatchedSpanMs": 110.96666800000003,
+          "hostAcknowledgementDurationMs": 183.87447900000006,
+          "hostMaxLateDispatchMs": 0.6135039999999208,
+          "deliveredDurationMs": 177.5,
+          "receiptIntervalMs": {
+            "p50": 20.700000000186265,
+            "p95": 51.700000000186265,
+            "max": 51.700000000186265,
+            "total": 177.5
+          },
+          "outsideEngineGapMs": {
+            "p50": 19.300000000279397,
+            "p95": 49.5,
+            "max": 49.5,
+            "total": 165.39999999990687
+          },
+          "engineExecutions": 7,
+          "renderedFrames": 7,
+          "engineMs": {
+            "p50": 1.8999999999068677,
+            "p95": 3.5,
+            "max": 3.5,
+            "total": 15.100000000093132
+          },
+          "renderedEngineMs": {
+            "p50": 1.8999999999068677,
+            "p95": 3.5,
+            "max": 3.5,
+            "total": 15.100000000093132
+          },
+          "completedFrameIntervalMs": {
+            "p50": 21.300000000279397,
+            "p95": 53,
+            "max": 53,
+            "total": 178.60000000009313
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 2.7000000001862645,
+            "p95": 4,
+            "max": 4,
+            "total": 19.90000000037253
+          },
+          "lastInputToTargetFrameMs": 3.3999999999068677,
+          "engineFramesOver16_7ms": 0,
+          "nativeTotals": {
+            "bufferCreates": 0,
+            "bufferDeletes": 0,
+            "bufferAllocations": 0,
+            "bufferUploads": 11,
+            "bufferBytes": 46704,
+            "uniformUploads": 8,
+            "uniformBytes": 1472,
+            "drawcalls": 28,
+            "indices": 75612,
+            "arrayVertices": 28
+          },
+          "visibleBefore": {
+            "cards": 24,
+            "edges": 24,
+            "other": 1
+          },
+          "visibleAfter": {
+            "cards": 20,
+            "edges": 20,
+            "other": 1
+          },
+          "allocatedBufferBytesBefore": 56404,
+          "allocatedBufferBytesAfter": 56404
+        },
+        {
+          "round": 0,
+          "direction": "out",
+          "hostCommands": 8,
+          "receivedEvents": 8,
+          "coalescedCommands": 0,
+          "deltaSum": 160,
+          "hostDispatchedSpanMs": 115.6661269999995,
+          "hostAcknowledgementDurationMs": 137.41733999999997,
+          "hostMaxLateDispatchMs": 3.80088700000033,
+          "deliveredDurationMs": 116.59999999962747,
+          "receiptIntervalMs": {
+            "p50": 16.5,
+            "p95": 19.09999999962747,
+            "max": 19.09999999962747,
+            "total": 116.59999999962747
+          },
+          "outsideEngineGapMs": {
+            "p50": 14.899999999906868,
+            "p95": 17.5,
+            "max": 17.5,
+            "total": 105.70000000018626
+          },
+          "engineExecutions": 8,
+          "renderedFrames": 6,
+          "engineMs": {
+            "p50": 1.5,
+            "p95": 2.7999999998137355,
+            "max": 2.7999999998137355,
+            "total": 13.399999999906868
+          },
+          "renderedEngineMs": {
+            "p50": 1.6999999997206032,
+            "p95": 2.7999999998137355,
+            "max": 2.7999999998137355,
+            "total": 12.100000000093132
+          },
+          "completedFrameIntervalMs": {
+            "p50": 17.200000000186265,
+            "p95": 19.199999999720603,
+            "max": 19.199999999720603,
+            "total": 116.70000000018626
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 2.6999999997206032,
+            "p95": 18.5,
+            "max": 18.5,
+            "total": 51.49999999953434
+          },
+          "lastInputToTargetFrameMs": 2.8000000002793968,
+          "engineFramesOver16_7ms": 0,
+          "nativeTotals": {
+            "bufferCreates": 0,
+            "bufferDeletes": 0,
+            "bufferAllocations": 0,
+            "bufferUploads": 10,
+            "bufferBytes": 55296,
+            "uniformUploads": 7,
+            "uniformBytes": 1280,
+            "drawcalls": 24,
+            "indices": 64566,
+            "arrayVertices": 24
+          },
+          "visibleBefore": {
+            "cards": 20,
+            "edges": 20,
+            "other": 1
+          },
+          "visibleAfter": {
+            "cards": 24,
+            "edges": 24,
+            "other": 1
+          },
+          "allocatedBufferBytesBefore": 56404,
+          "allocatedBufferBytesAfter": 56404
+        },
+        {
+          "round": 1,
+          "direction": "in",
+          "hostCommands": 8,
+          "receivedEvents": 7,
+          "coalescedCommands": 1,
+          "deltaSum": -160,
+          "hostDispatchedSpanMs": 111.4188639999993,
+          "hostAcknowledgementDurationMs": 163.59083099999953,
+          "hostMaxLateDispatchMs": 2.1536230000001524,
+          "deliveredDurationMs": 138.09999999962747,
+          "receiptIntervalMs": {
+            "p50": 16.5,
+            "p95": 47.3000000002794,
+            "max": 47.3000000002794,
+            "total": 138.09999999962747
+          },
+          "outsideEngineGapMs": {
+            "p50": 11.899999999906868,
+            "p95": 46.8000000002794,
+            "max": 46.8000000002794,
+            "total": 124.39999999990687
+          },
+          "engineExecutions": 7,
+          "renderedFrames": 6,
+          "engineMs": {
+            "p50": 2.2000000001862645,
+            "p95": 4.399999999906868,
+            "max": 4.399999999906868,
+            "total": 16.299999999813735
+          },
+          "renderedEngineMs": {
+            "p50": 2.2000000001862645,
+            "p95": 4.399999999906868,
+            "max": 4.399999999906868,
+            "total": 15.699999999720603
+          },
+          "completedFrameIntervalMs": {
+            "p50": 13.899999999906868,
+            "p95": 49,
+            "max": 49,
+            "total": 138.1999999997206
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 4.2999999998137355,
+            "p95": 46.60000000009313,
+            "max": 46.60000000009313,
+            "total": 69.90000000037253
+          },
+          "lastInputToTargetFrameMs": 3,
+          "engineFramesOver16_7ms": 0,
+          "nativeTotals": {
+            "bufferCreates": 0,
+            "bufferDeletes": 0,
+            "bufferAllocations": 0,
+            "bufferUploads": 10,
+            "bufferBytes": 46512,
+            "uniformUploads": 7,
+            "uniformBytes": 1280,
+            "drawcalls": 24,
+            "indices": 62712,
+            "arrayVertices": 24
+          },
+          "visibleBefore": {
+            "cards": 24,
+            "edges": 24,
+            "other": 1
+          },
+          "visibleAfter": {
+            "cards": 20,
+            "edges": 20,
+            "other": 1
+          },
+          "allocatedBufferBytesBefore": 56404,
+          "allocatedBufferBytesAfter": 56404
+        },
+        {
+          "round": 1,
+          "direction": "out",
+          "hostCommands": 8,
+          "receivedEvents": 8,
+          "coalescedCommands": 0,
+          "deltaSum": 160,
+          "hostDispatchedSpanMs": 111.84072899999956,
+          "hostAcknowledgementDurationMs": 183.7592399999994,
+          "hostMaxLateDispatchMs": 1.8884900000002744,
+          "deliveredDurationMs": 152.79999999981374,
+          "receiptIntervalMs": {
+            "p50": 16.799999999813735,
+            "p95": 42.39999999990687,
+            "max": 42.39999999990687,
+            "total": 152.79999999981374
+          },
+          "outsideEngineGapMs": {
+            "p50": 13.700000000186265,
+            "p95": 35.39999999990687,
+            "max": 35.39999999990687,
+            "total": 135.6000000005588
+          },
+          "engineExecutions": 9,
+          "renderedFrames": 8,
+          "engineMs": {
+            "p50": 2.1999999997206032,
+            "p95": 11.200000000186265,
+            "max": 11.200000000186265,
+            "total": 28.59999999962747
+          },
+          "renderedEngineMs": {
+            "p50": 2.1999999997206032,
+            "p95": 11.200000000186265,
+            "max": 11.200000000186265,
+            "total": 28.199999999720603
+          },
+          "completedFrameIntervalMs": {
+            "p50": 17.700000000186265,
+            "p95": 46.60000000009313,
+            "max": 46.60000000009313,
+            "total": 162.60000000009313
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 3.6000000000931323,
+            "p95": 11.600000000093132,
+            "max": 11.600000000093132,
+            "total": 40.39999999990687
+          },
+          "lastInputToTargetFrameMs": 11.600000000093132,
+          "engineFramesOver16_7ms": 0,
+          "nativeTotals": {
+            "bufferCreates": 0,
+            "bufferDeletes": 0,
+            "bufferAllocations": 0,
+            "bufferUploads": 12,
+            "bufferBytes": 55680,
+            "uniformUploads": 9,
+            "uniformBytes": 1664,
+            "drawcalls": 32,
+            "indices": 86682,
+            "arrayVertices": 32
+          },
+          "visibleBefore": {
+            "cards": 20,
+            "edges": 20,
+            "other": 1
+          },
+          "visibleAfter": {
+            "cards": 24,
+            "edges": 24,
+            "other": 1
+          },
+          "allocatedBufferBytesBefore": 56404,
+          "allocatedBufferBytesAfter": 56404
+        }
+      ]
+    },
+    {
+      "label": "chromium-2400-1",
+      "raw": {
+        "path": ".test-results/continuous-evaluation/continuous-1/workflow-continuous.json",
+        "bytes": 150362,
+        "sha256": "29cbeb46c8ebe058aab4c1c474322ce89c06cbc3322d3946098f9856655c572e"
+      },
+      "source": {
+        "head": "f6846773fc78d01294f3e5e2326d9e9f7819dcee",
+        "tree": "1544dd1aaa14c841fbb10f6b224d3c2bb997f952",
+        "dirty": false
+      },
+      "count": 2400,
+      "browser": "140.0.7339.186",
+      "node": "v24.22.3",
+      "gestures": [
+        {
+          "round": 0,
+          "direction": "in",
+          "hostCommands": 40,
+          "receivedEvents": 22,
+          "coalescedCommands": 18,
+          "deltaSum": -800,
+          "hostDispatchedSpanMs": 623.7617899999996,
+          "hostAcknowledgementDurationMs": 1599.8947170000001,
+          "hostMaxLateDispatchMs": 6.2155290000000605,
+          "deliveredDurationMs": 4690,
+          "receiptIntervalMs": {
+            "p50": 116.5,
+            "p95": 670.3999999999069,
+            "max": 675.2000000001863,
+            "total": 4690
+          },
+          "outsideEngineGapMs": {
+            "p50": 3.2999999998137355,
+            "p95": 677.8999999999069,
+            "max": 677.8999999999069,
+            "total": 3971.4999999995343
+          },
+          "engineExecutions": 20,
+          "renderedFrames": 19,
+          "engineMs": {
+            "p50": 22.100000000093132,
+            "p95": 111.5,
+            "max": 141.10000000009313,
+            "total": 726.0000000004657
+          },
+          "renderedEngineMs": {
+            "p50": 22.399999999906868,
+            "p95": 141.10000000009313,
+            "max": 141.10000000009313,
+            "total": 724.6000000005588
+          },
+          "completedFrameIntervalMs": {
+            "p50": 144.39999999990687,
+            "p95": 694.1999999997206,
+            "max": 694.1999999997206,
+            "total": 4586
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 26.100000000093132,
+            "p95": 273.70000000018626,
+            "max": 692.8999999999069,
+            "total": 1854.4000000003725
+          },
+          "lastInputToTargetFrameMs": 8,
+          "engineFramesOver16_7ms": 12,
+          "nativeTotals": {
+            "bufferCreates": 66,
+            "bufferDeletes": 120,
+            "bufferAllocations": 66,
+            "bufferUploads": 268,
+            "bufferBytes": 21325200,
+            "uniformUploads": 75,
+            "uniformBytes": 10816,
+            "drawcalls": 176,
+            "indices": 4967106,
+            "arrayVertices": 76
+          },
+          "visibleBefore": {
+            "cards": 2400,
+            "edges": 2400,
+            "other": 1
+          },
+          "visibleAfter": {
+            "cards": 102,
+            "edges": 90,
+            "other": 0
+          },
+          "allocatedBufferBytesBefore": 3080668,
+          "allocatedBufferBytesAfter": 184916
+        },
+        {
+          "round": 0,
+          "direction": "out",
+          "hostCommands": 40,
+          "receivedEvents": 22,
+          "coalescedCommands": 18,
+          "deltaSum": 800,
+          "hostDispatchedSpanMs": 624.0027640000008,
+          "hostAcknowledgementDurationMs": 870.8995539999996,
+          "hostMaxLateDispatchMs": 7.707383000000846,
+          "deliveredDurationMs": 1279.3000000002794,
+          "receiptIntervalMs": {
+            "p50": 51.200000000186265,
+            "p95": 146.40000000037253,
+            "max": 185.29999999981374,
+            "total": 1279.3000000002794
+          },
+          "outsideEngineGapMs": {
+            "p50": 29.299999999813735,
+            "p95": 123.89999999990687,
+            "max": 123.89999999990687,
+            "total": 702
+          },
+          "engineExecutions": 20,
+          "renderedFrames": 17,
+          "engineMs": {
+            "p50": 15.399999999906868,
+            "p95": 75.89999999990687,
+            "max": 84.3000000002794,
+            "total": 593.8999999999069
+          },
+          "renderedEngineMs": {
+            "p50": 20,
+            "p95": 84.3000000002794,
+            "max": 84.3000000002794,
+            "total": 590.3999999999069
+          },
+          "completedFrameIntervalMs": {
+            "p50": 62.1999999997206,
+            "p95": 181.1999999997206,
+            "max": 181.1999999997206,
+            "total": 1288.7999999998137
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 22.300000000279397,
+            "p95": 86.3000000002794,
+            "max": 121.20000000018626,
+            "total": 844.3000000012107
+          },
+          "lastInputToTargetFrameMs": 17.299999999813735,
+          "engineFramesOver16_7ms": 9,
+          "nativeTotals": {
+            "bufferCreates": 90,
+            "bufferDeletes": 36,
+            "bufferAllocations": 90,
+            "bufferUploads": 312,
+            "bufferBytes": 20463832,
+            "uniformUploads": 81,
+            "uniformBytes": 11456,
+            "drawcalls": 172,
+            "indices": 4773936,
+            "arrayVertices": 68
+          },
+          "visibleBefore": {
+            "cards": 102,
+            "edges": 90,
+            "other": 0
+          },
+          "visibleAfter": {
+            "cards": 2400,
+            "edges": 2400,
+            "other": 1
+          },
+          "allocatedBufferBytesBefore": 184916,
+          "allocatedBufferBytesAfter": 3357148
+        },
+        {
+          "round": 1,
+          "direction": "in",
+          "hostCommands": 40,
+          "receivedEvents": 21,
+          "coalescedCommands": 19,
+          "deltaSum": -800,
+          "hostDispatchedSpanMs": 622.9512539999996,
+          "hostAcknowledgementDurationMs": 4122.011272000002,
+          "hostMaxLateDispatchMs": 5.670132999999623,
+          "deliveredDurationMs": 6449.299999999814,
+          "receiptIntervalMs": {
+            "p50": 212.5,
+            "p95": 689.6000000000931,
+            "max": 708.6000000000931,
+            "total": 6449.299999999814
+          },
+          "outsideEngineGapMs": {
+            "p50": 341.8000000002794,
+            "p95": 659.6999999997206,
+            "max": 659.6999999997206,
+            "total": 5909.5
+          },
+          "engineExecutions": 20,
+          "renderedFrames": 20,
+          "engineMs": {
+            "p50": 17.800000000279397,
+            "p95": 57.39999999990687,
+            "max": 62.3000000002794,
+            "total": 531.2000000001863
+          },
+          "renderedEngineMs": {
+            "p50": 17.800000000279397,
+            "p95": 57.39999999990687,
+            "max": 62.3000000002794,
+            "total": 531.2000000001863
+          },
+          "completedFrameIntervalMs": {
+            "p50": 375.3000000002794,
+            "p95": 722,
+            "max": 722,
+            "total": 6390.600000000093
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 21.699999999720603,
+            "p95": 63.89999999990687,
+            "max": 64.89999999990687,
+            "total": 622.5
+          },
+          "lastInputToTargetFrameMs": 6.2000000001862645,
+          "engineFramesOver16_7ms": 11,
+          "nativeTotals": {
+            "bufferCreates": 18,
+            "bufferDeletes": 72,
+            "bufferAllocations": 18,
+            "bufferUploads": 309,
+            "bufferBytes": 22876560,
+            "uniformUploads": 91,
+            "uniformBytes": 12928,
+            "drawcalls": 166,
+            "indices": 4590084,
+            "arrayVertices": 80
+          },
+          "visibleBefore": {
+            "cards": 2400,
+            "edges": 2400,
+            "other": 1
+          },
+          "visibleAfter": {
+            "cards": 102,
+            "edges": 90,
+            "other": 0
+          },
+          "allocatedBufferBytesBefore": 3357148,
+          "allocatedBufferBytesAfter": 184916
+        },
+        {
+          "round": 1,
+          "direction": "out",
+          "hostCommands": 40,
+          "receivedEvents": 25,
+          "coalescedCommands": 15,
+          "deltaSum": 800,
+          "hostDispatchedSpanMs": 623.1527660000029,
+          "hostAcknowledgementDurationMs": 765.9008970000032,
+          "hostMaxLateDispatchMs": 3.7113590000008116,
+          "deliveredDurationMs": 1497.3000000002794,
+          "receiptIntervalMs": {
+            "p50": 46.799999999813735,
+            "p95": 184.6999999997206,
+            "max": 195.40000000037253,
+            "total": 1497.3000000002794
+          },
+          "outsideEngineGapMs": {
+            "p50": 49,
+            "p95": 137.89999999990687,
+            "max": 137.89999999990687,
+            "total": 959.8999999989755
+          },
+          "engineExecutions": 19,
+          "renderedFrames": 17,
+          "engineMs": {
+            "p50": 18.5,
+            "p95": 73.60000000009313,
+            "max": 73.60000000009313,
+            "total": 545.1000000010245
+          },
+          "renderedEngineMs": {
+            "p50": 20.799999999813735,
+            "p95": 73.60000000009313,
+            "max": 73.60000000009313,
+            "total": 543.8000000007451
+          },
+          "completedFrameIntervalMs": {
+            "p50": 73.89999999990687,
+            "p95": 206.60000000009313,
+            "max": 206.60000000009313,
+            "total": 1497.2999999998137
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 40.10000000009313,
+            "p95": 86.89999999990687,
+            "max": 116.90000000037253,
+            "total": 1068.4000000013039
+          },
+          "lastInputToTargetFrameMs": 19.09999999962747,
+          "engineFramesOver16_7ms": 11,
+          "nativeTotals": {
+            "bufferCreates": 97,
+            "bufferDeletes": 43,
+            "bufferAllocations": 97,
+            "bufferUploads": 325,
+            "bufferBytes": 21595056,
+            "uniformUploads": 86,
+            "uniformBytes": 12096,
+            "drawcalls": 177,
+            "indices": 4942623,
+            "arrayVertices": 68
+          },
+          "visibleBefore": {
+            "cards": 102,
+            "edges": 90,
+            "other": 0
+          },
+          "visibleAfter": {
+            "cards": 2400,
+            "edges": 2400,
+            "other": 1
+          },
+          "allocatedBufferBytesBefore": 184916,
+          "allocatedBufferBytesAfter": 3351388
+        }
+      ]
+    },
+    {
+      "label": "chromium-2400-2",
+      "raw": {
+        "path": ".test-results/continuous-evaluation/continuous-2/workflow-continuous.json",
+        "bytes": 150638,
+        "sha256": "43f88e0b010c4077fd4eccf963b637ae1ad29abdb8e3e25f53ec2cd29e326c81"
+      },
+      "source": {
+        "head": "f6846773fc78d01294f3e5e2326d9e9f7819dcee",
+        "tree": "1544dd1aaa14c841fbb10f6b224d3c2bb997f952",
+        "dirty": false
+      },
+      "count": 2400,
+      "browser": "140.0.7339.186",
+      "node": "v24.22.3",
+      "gestures": [
+        {
+          "round": 0,
+          "direction": "in",
+          "hostCommands": 40,
+          "receivedEvents": 22,
+          "coalescedCommands": 18,
+          "deltaSum": -800,
+          "hostDispatchedSpanMs": 624.6887889999998,
+          "hostAcknowledgementDurationMs": 1234.1517549999999,
+          "hostMaxLateDispatchMs": 4.804165999999896,
+          "deliveredDurationMs": 5679.199999999721,
+          "receiptIntervalMs": {
+            "p50": 64.39999999990687,
+            "p95": 800.3000000002794,
+            "max": 1175.1000000000931,
+            "total": 5679.199999999721
+          },
+          "outsideEngineGapMs": {
+            "p50": 2.3000000002793968,
+            "p95": 783.6999999997206,
+            "max": 1157.6999999997206,
+            "total": 4973.699999998324
+          },
+          "engineExecutions": 21,
+          "renderedFrames": 20,
+          "engineMs": {
+            "p50": 20.800000000279397,
+            "p95": 102.5,
+            "max": 108,
+            "total": 715.5000000018626
+          },
+          "renderedEngineMs": {
+            "p50": 20.800000000279397,
+            "p95": 102.5,
+            "max": 108,
+            "total": 714.2000000015832
+          },
+          "completedFrameIntervalMs": {
+            "p50": 60.6999999997206,
+            "p95": 796.7999999998137,
+            "max": 1174,
+            "total": 5586.700000000186
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 24.699999999720603,
+            "p95": 113.39999999990687,
+            "max": 595.3999999999069,
+            "total": 1447.0000000004657
+          },
+          "lastInputToTargetFrameMs": 10.300000000279397,
+          "engineFramesOver16_7ms": 13,
+          "nativeTotals": {
+            "bufferCreates": 56,
+            "bufferDeletes": 110,
+            "bufferAllocations": 56,
+            "bufferUploads": 299,
+            "bufferBytes": 22781232,
+            "uniformUploads": 84,
+            "uniformBytes": 12032,
+            "drawcalls": 192,
+            "indices": 5255526,
+            "arrayVertices": 80
+          },
+          "visibleBefore": {
+            "cards": 2400,
+            "edges": 2400,
+            "other": 1
+          },
+          "visibleAfter": {
+            "cards": 102,
+            "edges": 90,
+            "other": 0
+          },
+          "allocatedBufferBytesBefore": 3080668,
+          "allocatedBufferBytesAfter": 184916
+        },
+        {
+          "round": 0,
+          "direction": "out",
+          "hostCommands": 40,
+          "receivedEvents": 23,
+          "coalescedCommands": 17,
+          "deltaSum": 800,
+          "hostDispatchedSpanMs": 623.4261859999988,
+          "hostAcknowledgementDurationMs": 780.0332109999999,
+          "hostMaxLateDispatchMs": 5.412051000001156,
+          "deliveredDurationMs": 1824.8999999999069,
+          "receiptIntervalMs": {
+            "p50": 48.8000000002794,
+            "p95": 218.89999999990687,
+            "max": 353.5,
+            "total": 1824.8999999999069
+          },
+          "outsideEngineGapMs": {
+            "p50": 38.59999999962747,
+            "p95": 291.29999999981374,
+            "max": 291.29999999981374,
+            "total": 1245
+          },
+          "engineExecutions": 20,
+          "renderedFrames": 18,
+          "engineMs": {
+            "p50": 17.200000000186265,
+            "p95": 82.39999999990687,
+            "max": 95.5,
+            "total": 600.3999999999069
+          },
+          "renderedEngineMs": {
+            "p50": 22,
+            "p95": 95.5,
+            "max": 95.5,
+            "total": 598.1999999997206
+          },
+          "completedFrameIntervalMs": {
+            "p50": 67,
+            "p95": 308.5,
+            "max": 308.5,
+            "total": 1840.8000000002794
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 37.10000000009313,
+            "p95": 97.6999999997206,
+            "max": 230.60000000009313,
+            "total": 1044.9999999995343
+          },
+          "lastInputToTargetFrameMs": 20.600000000093132,
+          "engineFramesOver16_7ms": 12,
+          "nativeTotals": {
+            "bufferCreates": 92,
+            "bufferDeletes": 38,
+            "bufferAllocations": 92,
+            "bufferUploads": 336,
+            "bufferBytes": 23674224,
+            "uniformUploads": 89,
+            "uniformBytes": 12544,
+            "drawcalls": 186,
+            "indices": 5363529,
+            "arrayVertices": 72
+          },
+          "visibleBefore": {
+            "cards": 102,
+            "edges": 90,
+            "other": 0
+          },
+          "visibleAfter": {
+            "cards": 2400,
+            "edges": 2400,
+            "other": 1
+          },
+          "allocatedBufferBytesBefore": 184916,
+          "allocatedBufferBytesAfter": 3350236
+        },
+        {
+          "round": 1,
+          "direction": "in",
+          "hostCommands": 40,
+          "receivedEvents": 21,
+          "coalescedCommands": 19,
+          "deltaSum": -800,
+          "hostDispatchedSpanMs": 623.923525000002,
+          "hostAcknowledgementDurationMs": 3836.1108730000014,
+          "hostMaxLateDispatchMs": 1.0359050000006391,
+          "deliveredDurationMs": 7953.200000000186,
+          "receiptIntervalMs": {
+            "p50": 223.29999999981374,
+            "p95": 845.5,
+            "max": 1426.5999999996275,
+            "total": 7953.200000000186
+          },
+          "outsideEngineGapMs": {
+            "p50": 358.10000000009313,
+            "p95": 1365.2999999998137,
+            "max": 1365.2999999998137,
+            "total": 7430.5999999996275
+          },
+          "engineExecutions": 20,
+          "renderedFrames": 20,
+          "engineMs": {
+            "p50": 16.399999999906868,
+            "p95": 56.8000000002794,
+            "max": 58.799999999813735,
+            "total": 472.90000000037253
+          },
+          "renderedEngineMs": {
+            "p50": 16.399999999906868,
+            "p95": 56.8000000002794,
+            "max": 58.799999999813735,
+            "total": 472.90000000037253
+          },
+          "completedFrameIntervalMs": {
+            "p50": 373,
+            "p95": 1422.1000000000931,
+            "max": 1422.1000000000931,
+            "total": 7850.100000000093
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 18.300000000279397,
+            "p95": 62.799999999813735,
+            "max": 108.70000000018626,
+            "total": 606.2000000006519
+          },
+          "lastInputToTargetFrameMs": 5.600000000093132,
+          "engineFramesOver16_7ms": 9,
+          "nativeTotals": {
+            "bufferCreates": 18,
+            "bufferDeletes": 72,
+            "bufferAllocations": 18,
+            "bufferUploads": 309,
+            "bufferBytes": 22897584,
+            "uniformUploads": 91,
+            "uniformBytes": 12928,
+            "drawcalls": 166,
+            "indices": 4594464,
+            "arrayVertices": 80
+          },
+          "visibleBefore": {
+            "cards": 2400,
+            "edges": 2400,
+            "other": 1
+          },
+          "visibleAfter": {
+            "cards": 102,
+            "edges": 90,
+            "other": 0
+          },
+          "allocatedBufferBytesBefore": 3350236,
+          "allocatedBufferBytesAfter": 184916
+        },
+        {
+          "round": 1,
+          "direction": "out",
+          "hostCommands": 40,
+          "receivedEvents": 23,
+          "coalescedCommands": 17,
+          "deltaSum": 800,
+          "hostDispatchedSpanMs": 624.3146489999999,
+          "hostAcknowledgementDurationMs": 914.3524709999983,
+          "hostMaxLateDispatchMs": 2.8668440000001283,
+          "deliveredDurationMs": 2054.899999999907,
+          "receiptIntervalMs": {
+            "p50": 72.10000000009313,
+            "p95": 270.29999999981374,
+            "max": 343.39999999990687,
+            "total": 2054.899999999907
+          },
+          "outsideEngineGapMs": {
+            "p50": 59.3000000002794,
+            "p95": 287,
+            "max": 287,
+            "total": 1535.6000000010245
+          },
+          "engineExecutions": 19,
+          "renderedFrames": 18,
+          "engineMs": {
+            "p50": 21.100000000093132,
+            "p95": 79.60000000009313,
+            "max": 79.60000000009313,
+            "total": 540.8999999989755
+          },
+          "renderedEngineMs": {
+            "p50": 21.100000000093132,
+            "p95": 79.60000000009313,
+            "max": 79.60000000009313,
+            "total": 540.3999999989755
+          },
+          "completedFrameIntervalMs": {
+            "p50": 91.60000000009313,
+            "p95": 345.5,
+            "max": 345.5,
+            "total": 2072.2000000001863
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 29,
+            "p95": 106.5,
+            "max": 240.79999999981374,
+            "total": 1092.9999999990687
+          },
+          "lastInputToTargetFrameMs": 21.700000000186265,
+          "engineFramesOver16_7ms": 12,
+          "nativeTotals": {
+            "bufferCreates": 89,
+            "bufferDeletes": 35,
+            "bufferAllocations": 89,
+            "bufferUploads": 330,
+            "bufferBytes": 21945624,
+            "uniformUploads": 86,
+            "uniformBytes": 12160,
+            "drawcalls": 182,
+            "indices": 5038206,
+            "arrayVertices": 72
+          },
+          "visibleBefore": {
+            "cards": 102,
+            "edges": 90,
+            "other": 0
+          },
+          "visibleAfter": {
+            "cards": 2400,
+            "edges": 2400,
+            "other": 1
+          },
+          "allocatedBufferBytesBefore": 184916,
+          "allocatedBufferBytesAfter": 3351388
+        }
+      ]
+    },
+    {
+      "label": "webkit-24",
+      "raw": {
+        "path": ".test-results/continuous-evaluation/webkit-24/workflow-continuous.json",
+        "bytes": 56026,
+        "sha256": "cb23e2f556bde3fd9224e83a5cd0bf553f203b256d27ca162278103680189a6f"
+      },
+      "source": {
+        "head": "f6846773fc78d01294f3e5e2326d9e9f7819dcee",
+        "tree": "1544dd1aaa14c841fbb10f6b224d3c2bb997f952",
+        "dirty": false
+      },
+      "count": 24,
+      "browser": "26.5",
+      "node": "v24.22.3",
+      "gestures": [
+        {
+          "round": 0,
+          "direction": "in",
+          "hostCommands": 8,
+          "receivedEvents": 8,
+          "coalescedCommands": 0,
+          "deltaSum": -160,
+          "hostDispatchedSpanMs": 111.72649100000035,
+          "hostAcknowledgementDurationMs": 135.7039249999998,
+          "hostMaxLateDispatchMs": 3.0738939999992,
+          "deliveredDurationMs": 114,
+          "receiptIntervalMs": {
+            "p50": 25,
+            "p95": 28,
+            "max": 28,
+            "total": 114
+          },
+          "outsideEngineGapMs": {
+            "p50": 22,
+            "p95": 26,
+            "max": 26,
+            "total": 91
+          },
+          "engineExecutions": 5,
+          "renderedFrames": 5,
+          "engineMs": {
+            "p50": 4,
+            "p95": 5,
+            "max": 5,
+            "total": 21
+          },
+          "renderedEngineMs": {
+            "p50": 4,
+            "p95": 5,
+            "max": 5,
+            "total": 21
+          },
+          "completedFrameIntervalMs": {
+            "p50": 26,
+            "p95": 30,
+            "max": 30,
+            "total": 109
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 15,
+            "p95": 17,
+            "max": 17,
+            "total": 119
+          },
+          "lastInputToTargetFrameMs": 12,
+          "engineFramesOver16_7ms": 0,
+          "nativeTotals": {
+            "bufferCreates": 0,
+            "bufferDeletes": 0,
+            "bufferAllocations": 0,
+            "bufferUploads": 9,
+            "bufferBytes": 46320,
+            "uniformUploads": 6,
+            "uniformBytes": 1088,
+            "drawcalls": 20,
+            "indices": 53472,
+            "arrayVertices": 20
+          },
+          "visibleBefore": {
+            "cards": 24,
+            "edges": 24,
+            "other": 1
+          },
+          "visibleAfter": {
+            "cards": 20,
+            "edges": 20,
+            "other": 1
+          },
+          "allocatedBufferBytesBefore": 56404,
+          "allocatedBufferBytesAfter": 56404
+        },
+        {
+          "round": 0,
+          "direction": "out",
+          "hostCommands": 8,
+          "receivedEvents": 8,
+          "coalescedCommands": 0,
+          "deltaSum": 160,
+          "hostDispatchedSpanMs": 112.33968900000036,
+          "hostAcknowledgementDurationMs": 148.8174600000002,
+          "hostMaxLateDispatchMs": 1.055490999999165,
+          "deliveredDurationMs": 136,
+          "receiptIntervalMs": {
+            "p50": 25,
+            "p95": 32,
+            "max": 32,
+            "total": 136
+          },
+          "outsideEngineGapMs": {
+            "p50": 22,
+            "p95": 25,
+            "max": 25,
+            "total": 110
+          },
+          "engineExecutions": 6,
+          "renderedFrames": 6,
+          "engineMs": {
+            "p50": 4,
+            "p95": 6,
+            "max": 6,
+            "total": 25
+          },
+          "renderedEngineMs": {
+            "p50": 4,
+            "p95": 6,
+            "max": 6,
+            "total": 25
+          },
+          "completedFrameIntervalMs": {
+            "p50": 26,
+            "p95": 29,
+            "max": 29,
+            "total": 132
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 14,
+            "p95": 18,
+            "max": 18,
+            "total": 117
+          },
+          "lastInputToTargetFrameMs": 14,
+          "engineFramesOver16_7ms": 0,
+          "nativeTotals": {
+            "bufferCreates": 0,
+            "bufferDeletes": 0,
+            "bufferAllocations": 0,
+            "bufferUploads": 10,
+            "bufferBytes": 55296,
+            "uniformUploads": 7,
+            "uniformBytes": 1280,
+            "drawcalls": 24,
+            "indices": 64542,
+            "arrayVertices": 24
+          },
+          "visibleBefore": {
+            "cards": 20,
+            "edges": 20,
+            "other": 1
+          },
+          "visibleAfter": {
+            "cards": 24,
+            "edges": 24,
+            "other": 1
+          },
+          "allocatedBufferBytesBefore": 56404,
+          "allocatedBufferBytesAfter": 56404
+        },
+        {
+          "round": 1,
+          "direction": "in",
+          "hostCommands": 8,
+          "receivedEvents": 8,
+          "coalescedCommands": 0,
+          "deltaSum": -160,
+          "hostDispatchedSpanMs": 112.38993800000026,
+          "hostAcknowledgementDurationMs": 158.68559900000037,
+          "hostMaxLateDispatchMs": 0.46005500000046595,
+          "deliveredDurationMs": 150,
+          "receiptIntervalMs": {
+            "p50": 28,
+            "p95": 41,
+            "max": 41,
+            "total": 150
+          },
+          "outsideEngineGapMs": {
+            "p50": 21,
+            "p95": 28,
+            "max": 28,
+            "total": 130
+          },
+          "engineExecutions": 7,
+          "renderedFrames": 6,
+          "engineMs": {
+            "p50": 3,
+            "p95": 5,
+            "max": 5,
+            "total": 23
+          },
+          "renderedEngineMs": {
+            "p50": 3,
+            "p95": 5,
+            "max": 5,
+            "total": 22
+          },
+          "completedFrameIntervalMs": {
+            "p50": 25,
+            "p95": 31,
+            "max": 31,
+            "total": 149
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 14,
+            "p95": 17,
+            "max": 17,
+            "total": 110
+          },
+          "lastInputToTargetFrameMs": 13,
+          "engineFramesOver16_7ms": 0,
+          "nativeTotals": {
+            "bufferCreates": 0,
+            "bufferDeletes": 0,
+            "bufferAllocations": 0,
+            "bufferUploads": 10,
+            "bufferBytes": 46512,
+            "uniformUploads": 7,
+            "uniformBytes": 1280,
+            "drawcalls": 24,
+            "indices": 62688,
+            "arrayVertices": 24
+          },
+          "visibleBefore": {
+            "cards": 24,
+            "edges": 24,
+            "other": 1
+          },
+          "visibleAfter": {
+            "cards": 20,
+            "edges": 20,
+            "other": 1
+          },
+          "allocatedBufferBytesBefore": 56404,
+          "allocatedBufferBytesAfter": 56404
+        },
+        {
+          "round": 1,
+          "direction": "out",
+          "hostCommands": 8,
+          "receivedEvents": 8,
+          "coalescedCommands": 0,
+          "deltaSum": 160,
+          "hostDispatchedSpanMs": 112.45570899999984,
+          "hostAcknowledgementDurationMs": 148.18814800000018,
+          "hostMaxLateDispatchMs": 0.46606400000018766,
+          "deliveredDurationMs": 133,
+          "receiptIntervalMs": {
+            "p50": 22,
+            "p95": 31,
+            "max": 31,
+            "total": 133
+          },
+          "outsideEngineGapMs": {
+            "p50": 22,
+            "p95": 26,
+            "max": 26,
+            "total": 109
+          },
+          "engineExecutions": 6,
+          "renderedFrames": 6,
+          "engineMs": {
+            "p50": 3,
+            "p95": 4,
+            "max": 4,
+            "total": 21
+          },
+          "renderedEngineMs": {
+            "p50": 3,
+            "p95": 4,
+            "max": 4,
+            "total": 21
+          },
+          "completedFrameIntervalMs": {
+            "p50": 25,
+            "p95": 30,
+            "max": 30,
+            "total": 127
+          },
+          "inputPrefixCompletionMs": {
+            "p50": 13,
+            "p95": 19,
+            "max": 19,
+            "total": 110
+          },
+          "lastInputToTargetFrameMs": 11,
+          "engineFramesOver16_7ms": 0,
+          "nativeTotals": {
+            "bufferCreates": 0,
+            "bufferDeletes": 0,
+            "bufferAllocations": 0,
+            "bufferUploads": 10,
+            "bufferBytes": 55296,
+            "uniformUploads": 7,
+            "uniformBytes": 1280,
+            "drawcalls": 24,
+            "indices": 64542,
+            "arrayVertices": 24
+          },
+          "visibleBefore": {
+            "cards": 20,
+            "edges": 20,
+            "other": 1
+          },
+          "visibleAfter": {
+            "cards": 24,
+            "edges": 24,
+            "other": 1
+          },
+          "allocatedBufferBytesBefore": 56404,
+          "allocatedBufferBytesAfter": 56404
+        }
+      ]
+    }
+  ]
+}

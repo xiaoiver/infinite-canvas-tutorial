@@ -60,3 +60,19 @@ it('drops cancelled histories and freezes caller-owned input/view snapshots', ()
   c.observe(input);
   expect(c.status().events).toBe(0);
 });
+it('keeps UI accumulation separate from Float32 completed-camera normalization', () => {
+  let time = 1;
+  const c = continuousWheel(
+    (v, i: { isTrusted: boolean; dx: number }) => ({ ...v, x: v.x + i.dx }),
+    () => time,
+    (v) => ({ ...v, x: Math.fround(v.x) }),
+  );
+  c.start({ ...initial, x: 100000 });
+  for (let i = 0; i < 3; i++) {
+    c.observe({ isTrusted: true, dx: 0.1 });
+    time++;
+  }
+  c.frame(4, 5, { ...initial, x: Math.fround(100000.3) }, {});
+  const r = c.finish();
+  expect(r.events.at(-1)!.requested.x).toBeCloseTo(100000.3, 8);
+});

@@ -155,11 +155,12 @@ test('continuous trusted wheel stream reaches the final Workflow camera without 
           gesture.commands.push(command);
           // Enqueue on the host clock; do not wait for a target frame or an earlier
           // command's acknowledgement. Browser coalescing is measured, not assumed.
-          pending.push(
-            page.mouse.wheel(0, deltaY).then(() => {
-              command.acknowledgedAfterMs = performance.now() - started;
-            }),
-          );
+          const acknowledgement = page.mouse.wheel(0, deltaY).then(() => {
+            command.acknowledgedAfterMs = performance.now() - started;
+          });
+          // Observe early rejection while retaining it for Promise.all below.
+          void acknowledgement.catch(() => {});
+          pending.push(acknowledgement);
         }
         await Promise.all(pending);
         await page.waitForFunction(

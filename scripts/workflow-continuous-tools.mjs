@@ -179,7 +179,28 @@ export function summarizeContinuousGesture(g) {
     receivedEvents: events.length,
     coalescedCommands: g.commands.length - events.length,
     deltaSum,
+    hostDispatchedSpanMs:
+      g.commands.at(-1).dispatchedAfterMs - g.commands[0].dispatchedAfterMs,
+    hostAcknowledgementDurationMs:
+      Math.max(...g.commands.map((c) => c.acknowledgedAfterMs)) -
+      g.commands[0].dispatchedAfterMs,
+    hostMaxLateDispatchMs: Math.max(
+      0,
+      ...g.commands.map((c) => c.dispatchedAfterMs - c.scheduledAfterMs),
+    ),
     deliveredDurationMs: last.receivedAt - events[0].receivedAt,
+    receiptIntervalMs:
+      events.length > 1
+        ? timing(
+            events.slice(1).map((e, i) => e.receivedAt - events[i].receivedAt),
+          )
+        : undefined,
+    outsideEngineGapMs:
+      frames.length > 1
+        ? timing(
+            frames.slice(1).map((f, i) => f.startedAt - frames[i].completedAt),
+          )
+        : undefined,
     engineExecutions: frames.length,
     renderedFrames: rendered.length,
     engineMs: timing(frames.map((f) => f.elapsed)),
