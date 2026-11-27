@@ -13,6 +13,7 @@ import {
   Marker,
   Filter,
   Children,
+  FractionalIndex,
 } from '../../packages/ecs/src';
 import { StrokeBatch } from '../../packages/ecs/src/drawcalls/StrokeBatch';
 import { Mesh } from '../../packages/ecs/src/drawcalls/Mesh';
@@ -319,4 +320,46 @@ it('reclassifies surviving nested paint edits when another visible member leaves
   expect(queued(batch).map((d) => d.shapes)).toEqual([
     [a.entity, b.entity, c.entity],
   ]);
+});
+
+import { orderedBatchPagesContract } from '../contracts/ordered-batch-pages';
+orderedBatchPagesContract('ECS stroke', () => {
+  const batch = manager();
+  batch.setImageBatchingEnabled(true);
+  batch.setPathInstancingEnabled(true);
+  const data = new Map<Entity, Map<unknown, any>>();
+  let previous: Entity[] = [],
+    pages: any[] = [];
+  return {
+    nodes: (count: number) =>
+      Array.from({ length: count }, (_, i) => {
+        const n = path();
+        n.data.set(FractionalIndex, { value: String(i).padStart(6, '0') });
+        data.set(n.entity, n.data);
+        return n.entity;
+      }),
+    frame: (nodes: Entity[]) => {
+      const visible = new Set(nodes),
+        old = new Set(previous);
+      previous.forEach((n) => {
+        if (!visible.has(n)) batch.remove(n, false);
+      });
+      nodes.forEach((n) => {
+        if (!old.has(n)) batch.add(n);
+      });
+      nodes.forEach((node, i) => {
+        data.get(node)!.get(FractionalIndex).value = String(i).padStart(6, '0');
+      });
+      batch.sort();
+      pages = batch.buildFlushSegments().flatMap((s) => s.drawcalls);
+      previous = nodes;
+      return pages;
+    },
+    isBatch: (p: any) => p instanceof StrokeBatch,
+    eligible: (n: Entity) => StrokeBatch.batchKey(n) !== null,
+    unsupported: (n: Entity, value: boolean) => {
+      data.get(n)!.get(Stroke).dasharray[0] = value ? 2 : 0;
+    },
+    dispose: () => batch.destroy(),
+  };
 });
