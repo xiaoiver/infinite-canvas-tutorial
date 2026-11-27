@@ -79,9 +79,11 @@ export class SmoothPolyline extends PathDrawcall {
   #uniformBuffer: Buffer;
 
   #batchConstants: ReturnType<typeof acquireStrokePageConstants> | undefined;
+  #batchCapacity = 0;
 
   /** Detach leased handles before base destruction; peer pages still own them. */
   protected releaseBatchConstants() {
+    this.#batchCapacity = 0;
     const lease = this.#batchConstants;
     if (!lease) return;
     this.#batchConstants = undefined;
@@ -93,8 +95,19 @@ export class SmoothPolyline extends PathDrawcall {
     lease.release();
   }
 
-  /** Keep immutable vertex IDs; leave dynamic buffers from earlier draws untouched. */
+  /** Keep immutable vertex IDs and bounded writable page storage. */
   private prepareBatchBuffers() {
+    const rows = this.instanceCount;
+    // Round to 16 rows and shrink below half capacity. Small edits keep their
+    // storage while inactive page memory stays bounded during zoom and pan.
+    if (
+      this.#batchConstants &&
+      rows <= this.#batchCapacity &&
+      (this.#batchCapacity <= 16 || rows * 2 >= this.#batchCapacity)
+    )
+      return;
+    const capacity = Math.max(16, Math.ceil(rows / 16) * 16);
+
     const created: Buffer[] = [];
     let acquired: ReturnType<typeof acquireStrokePageConstants> | undefined;
     try {
@@ -110,14 +123,8 @@ export class SmoothPolyline extends PathDrawcall {
         created.push(buffer);
         return buffer;
       };
-      const segments = allocate(
-        this.instanceCount * 15 * 4,
-        BufferFrequencyHint.DYNAMIC,
-      );
-      const travel = allocate(
-        this.instanceCount * 1 * 4,
-        BufferFrequencyHint.STATIC,
-      );
+      const segments = allocate(capacity * 15 * 4, BufferFrequencyHint.DYNAMIC);
+      const travel = allocate(capacity * 1 * 4, BufferFrequencyHint.STATIC);
       const constants =
         this.#batchConstants ??
         (acquired = acquireStrokePageConstants(this.device));
@@ -128,6 +135,7 @@ export class SmoothPolyline extends PathDrawcall {
       this.#vertexNumBuffer = constants.vertices;
       this.indexBuffer = constants.index;
       this.#batchConstants = constants;
+      this.#batchCapacity = capacity;
       // Publish ownership before uploads, so a failed upload can still retire cleanly.
       this.vertexBuffers = [
         segments,

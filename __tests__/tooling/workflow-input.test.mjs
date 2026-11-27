@@ -194,3 +194,16 @@ for (const key of ['phases', 'phaseDetail'])
     first(b).frames[0].data[key] = key === 'phases' ? {} : 'camera';
     assert.throws(() => compareWorkflowInputs(a, b), /Diagnostic phases/);
   });
+
+test('rejects upload counters or restoration markers even when the diagnostic mode is missing', () => {
+  for (const mutate of [
+    (x) => (x.uploadProbeRestored = true),
+    (x) => {
+      x.rounds[0].steps[0].strokeUploads = { packedCalls: 1 };
+    },
+  ]) {
+    const x = capture();
+    mutate(x);
+    assert.throws(() => compareWorkflowInputs(x, x), /upload diagnostics/);
+  }
+});

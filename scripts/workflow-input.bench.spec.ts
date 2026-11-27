@@ -1,3 +1,8 @@
+import {
+  strokeUploadMode,
+  summarizeStrokeUploads,
+} from './stroke-upload-tools.mjs';
+import { installStrokeUploadProbe } from '../__tests__/browser/fixtures/stroke-upload-probe';
 import { cameraPhaseMode, sumCameraPhases } from './camera-phase-tools.mjs';
 import { startCameraTimeline } from './camera-timeline';
 import { test, expect } from '@playwright/test';
@@ -15,6 +20,7 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
   browser,
 }) => {
   const phaseMode = cameraPhaseMode();
+  const uploadMode = strokeUploadMode();
   const count = Number(process.env.WORKFLOW_INPUT_COUNT ?? 2400);
   if (![24, 2400].includes(count))
     throw new Error('Use 24 for correctness or 2400 for the benchmark');
@@ -31,7 +37,10 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
     execFileSync('git', args, { encoding: 'utf8' }).trim();
   const capture = {
     schema: 1,
-    mode: phaseMode
+    uploadProbeRestored: undefined as boolean | undefined,
+    mode: uploadMode
+      ? 'stroke-upload-diagnostic'
+      : phaseMode
       ? 'camera-phase-diagnostic'
       : process.env.CAMERA_TIMELINE_DIR
       ? 'camera-timeline-diagnostic'
@@ -61,6 +70,7 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
     );
   let timeline: Awaited<ReturnType<typeof startCameraTimeline>>;
   try {
+    if (uploadMode) await installStrokeUploadProbe(page);
     await page.addInitScript(installProbes, { resourceStacks: false });
     await page.goto(
       phaseMode ? '/?imageBatching=1&cameraPhases=1' : '/?imageBatching=1',
@@ -167,6 +177,8 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
       capture.rounds.push(round);
       let view = initial.demo.view;
       for (const deltaY of deltas) {
+        if (uploadMode)
+          await page.evaluate(() => (window as any).strokeUploadProbe.begin());
         const expected = zoomAt(
           view,
           view.zoom * Math.exp(-deltaY * 0.0025),
@@ -196,6 +208,10 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
         expect(row.inputToResultMs).toBeGreaterThanOrEqual(row.inputToFrameMs);
         expect(last.data.state.webglError).toBeUndefined();
         expect(last.data.native.drawcalls).toBeGreaterThan(0);
+        if (uploadMode)
+          (row as any).strokeUploads = await page.evaluate(() =>
+            (window as any).strokeUploadProbe.take(),
+          );
         round.steps.push(row);
         view = expected;
         save();
@@ -222,6 +238,10 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
       await page.evaluate(() => window.workflowBenchmark.replayDocument()),
     ).toEqual(originalDocument);
     capture.documentSame = true;
+    if (uploadMode)
+      capture.uploadProbeRestored = await page.evaluate(() =>
+        (window as any).strokeUploadProbe.dispose(),
+      );
     // Pending input must reject on real example teardown, without leaking listeners.
     expect(
       await page.evaluate(async (mode) => {
@@ -276,6 +296,8 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
         }),
       );
     }
+    if (uploadMode)
+      console.log(JSON.stringify(summarizeStrokeUploads(capture)));
   } finally {
     await timeline?.abort();
     await page.close();

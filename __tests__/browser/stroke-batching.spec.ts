@@ -214,9 +214,18 @@ for (const backend of ['core', 'ecs'] as const) {
             : doc.find((n) => n.id === 'line').x;
         expect(actualX).toBe(x);
         const work = changed.native;
-        expect(work.bufferCreates).toBe(2);
-        expect(work.bufferDeletes).toBe(2);
-        expect(work.bufferAllocations).toBe(2);
+        expect(work.bufferCreates).toBe(0);
+        expect(work.bufferDeletes).toBe(0);
+        expect(work.bufferAllocations).toBe(0);
+        expect(work.bufferUploads - work.uniformUploads).toBeGreaterThanOrEqual(
+          2,
+        );
+        if (x === 21) {
+          const moved = await page.locator('canvas').screenshot();
+          await enable(page, backend, false);
+          compare(await page.locator('canvas').screenshot(), moved);
+          await enable(page, backend, true);
+        }
       }
       // Revisit a precision bucket; camera-only frames need no geometry rewrite.
       for (const zoom of [1.5, 0.75, 1.5, 0.75]) {
