@@ -1,6 +1,12 @@
 import { co, Entity, System } from '@lastolivegames/becsy';
 import { Gesture } from '@use-gesture/vanilla';
-import { Canvas, Input, Cursor, type PointerSample } from '../components';
+import {
+  Canvas,
+  Input,
+  Cursor,
+  type WheelSample,
+  type PointerSample,
+} from '../components';
 import { safeAddComponent } from '../history';
 import { DOMAdapter } from '../environment';
 import { isBrowser } from '../utils';
@@ -11,6 +17,13 @@ function preventIfCancelable(event: Event) {
   if (event.cancelable) {
     event.preventDefault();
   }
+}
+
+/** The first sample owns its array; later receipts append without copying it. */
+function appendWheelSample(input: Input, sample: WheelSample) {
+  const samples = input.wheelSamples.length ? input.wheelSamples : [];
+  samples.push(sample);
+  input.wheelSamples = samples;
 }
 
 /**
@@ -314,9 +327,19 @@ export class EventWriter extends System {
         x: e.clientX,
         y: e.clientY,
       });
-      Object.assign(input.write(Input), {
+      const state = input.write(Input);
+      Object.assign(state, {
         pointerClient: [e.clientX, e.clientY],
         pointerViewport: [viewport.x, viewport.y],
+      });
+      appendWheelSample(state, {
+        deltaX: e.deltaX,
+        deltaY: e.deltaY,
+        viewportX: viewport.x,
+        viewportY: viewport.y,
+        ctrlKey: e.ctrlKey,
+        metaKey: e.metaKey,
+        shiftKey: e.shiftKey,
       });
     };
 
@@ -402,6 +425,15 @@ export class EventWriter extends System {
           inputState.deltaY = -distanceDelta;
           inputState.pointerClient = [center.x, center.y];
           inputState.pointerViewport = [viewport.x, viewport.y];
+          appendWheelSample(inputState, {
+            deltaX: 0,
+            deltaY: -distanceDelta,
+            viewportX: viewport.x,
+            viewportY: viewport.y,
+            ctrlKey: true,
+            metaKey: inputState.metaKey,
+            shiftKey: inputState.shiftKey,
+          });
 
           if (last) {
             previousPinchDistance = null;

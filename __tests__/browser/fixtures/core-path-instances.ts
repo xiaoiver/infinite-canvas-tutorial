@@ -218,6 +218,17 @@ function frame() {
   canvas.render();
 }
 const api = {
+  navigationView(view?: {
+    x: number;
+    y: number;
+    zoom: number;
+    rotation: number;
+  }) {
+    if (view) canvas.camera.gotoLandmark(view, { duration: 0 });
+    frame();
+    const { x, y, zoom, rotation } = canvas.camera;
+    return { x, y, zoom, rotation };
+  },
   state() {
     return {
       enabled: canvas.pathInstancing,

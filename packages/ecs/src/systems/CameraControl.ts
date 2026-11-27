@@ -205,42 +205,60 @@ export class CameraControl extends System {
       }
 
       if (input.wheelTrigger) {
-        if (navigate3D) {
-          if (
-            !input.shiftKey &&
-            (input.metaKey ||
-              input.ctrlKey ||
-              Math.abs(input.deltaY) >= Math.abs(input.deltaX))
-          ) {
-            zoomCamera3D(
-              canvas.write(Camera3D),
-              pointerViewport,
-              input.deltaY,
-              width,
-              height,
-              api.getAppState().cameraZoomFactor,
+        // Replay in receipt order. Summing deltas loses mode/pivot changes and
+        // zoom-limit reversals; ComputedCamera is stale until the next derivation.
+        const samples = input.wheelSamples.length
+          ? input.wheelSamples
+          : [
+              {
+                deltaX: input.deltaX,
+                deltaY: input.deltaY,
+                viewportX: pointerViewport[0],
+                viewportY: pointerViewport[1],
+                ctrlKey: input.ctrlKey,
+                metaKey: input.metaKey,
+                shiftKey: input.shiftKey,
+              },
+            ];
+        for (const sample of samples) {
+          const pointerViewport = [sample.viewportX, sample.viewportY] as const;
+          if (navigate3D) {
+            if (
+              !sample.shiftKey &&
+              (sample.metaKey ||
+                sample.ctrlKey ||
+                Math.abs(sample.deltaY) >= Math.abs(sample.deltaX))
+            ) {
+              zoomCamera3D(
+                canvas.write(Camera3D),
+                pointerViewport,
+                sample.deltaY,
+                width,
+                height,
+                api.getAppState().cameraZoomFactor,
+              );
+            } else {
+              panCamera3D(
+                canvas.write(Camera3D),
+                pointerViewport,
+                [
+                  pointerViewport[0] - sample.deltaX,
+                  pointerViewport[1] - sample.deltaY,
+                ],
+                width,
+                height,
+              );
+            }
+          } else if (sample.metaKey || sample.ctrlKey) {
+            this.zoomByClientPoint(
+              entity,
+              api,
+              { x: pointerViewport[0], y: pointerViewport[1] },
+              sample.deltaY,
             );
           } else {
-            panCamera3D(
-              canvas.write(Camera3D),
-              pointerViewport,
-              [
-                pointerViewport[0] - input.deltaX,
-                pointerViewport[1] - input.deltaY,
-              ],
-              width,
-              height,
-            );
+            this.panByViewportDelta(entity, sample.deltaX, sample.deltaY);
           }
-        } else if (input.metaKey || input.ctrlKey) {
-          this.zoomByClientPoint(
-            entity,
-            api,
-            { x: pointerViewport[0], y: pointerViewport[1] },
-            input.deltaY,
-          );
-        } else {
-          this.panByViewportDelta(entity, input.deltaX, input.deltaY);
         }
       }
 
@@ -369,24 +387,28 @@ export class CameraControl extends System {
     client: IPointData,
     dist: number,
   ) => {
-    const { zoom } = camera.read(ComputedCamera);
+    const transform = camera.write(Transform);
+    const { translation, rotation } = transform;
+    const scale = transform.scale.x;
+    const zoom = 1 / scale;
     const { cameraZoomFactor } = api.getAppState();
-
-    // multiply the wheel movement by the current zoom level
-    // so we zoom less when zoomed in and more when zoomed out
     const newZoom = Math.max(
       MIN_ZOOM,
       Math.min(MAX_ZOOM, zoom * Math.pow(2, dist * -cameraZoomFactor)),
     );
-
-    api.gotoLandmark(
-      api.createLandmark({
-        viewportX: client.x,
-        viewportY: client.y,
-        zoom: newZoom,
-      }),
-      { duration: 0 },
-    );
+    const nextScale = 1 / newZoom;
+    const cos = Math.cos(rotation),
+      sin = Math.sin(rotation);
+    // Use the current transform for each event, including earlier pans/zooms
+    // in this execution. Preserve the event's own viewport pivot.
+    api.cancelLandmarkAnimation();
+    transform.translation = {
+      x:
+        translation.x + (client.x * cos - client.y * sin) * (scale - nextScale),
+      y:
+        translation.y + (client.x * sin + client.y * cos) * (scale - nextScale),
+    };
+    transform.scale = { x: nextScale, y: nextScale };
   };
 
   private getClipSpaceMousePosition(entity: Entity): vec2 {
