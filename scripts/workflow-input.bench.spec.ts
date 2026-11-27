@@ -342,6 +342,8 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
     await timeline?.abort();
     if (composition && !capture.composition?.restored)
       await composition.restore().catch(() => {});
+    // Retain unqualified experimental setup/cleanup records as well.
+    if (compositionMode) save();
     await page.close();
   }
 });
