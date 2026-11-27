@@ -41,8 +41,11 @@ The observer is **rebuild-only**. It does not trace every submitted reference on
 unchanged pages, pin an entire frame, implement addresses/fragmentation, repair
 cached draw references after eviction, or protect concurrent cameras/in-flight
 GPU work. Therefore low-budget eviction results are optimistic policy estimates,
-not an implementable cache contract. Actual rendering prepares/submits work in
-separate stages; a production cache needs whole-frame/camera leases or a proven
+not an implementable cache contract. Both [Core submit](../packages/core/src/drawcalls/Drawcall.ts#L119) and
+[ECS submit](../packages/ecs/src/drawcalls/Drawcall.ts#L266) prepare dirty geometry
+immediately before rendering that drawcall. An unchanged page still reaches
+render without a geometry rebuild. A production cache must validate every
+submitted reference and use whole-frame/camera leases or a proven
 upload/submission sequence. A byte-equal hit also does not prove an immutable
 source identity suitable for a cheap runtime cache key.
 
