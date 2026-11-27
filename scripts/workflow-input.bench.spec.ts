@@ -1,3 +1,5 @@
+import { drawingBufferMode } from './drawing-buffer-tools.mjs';
+import { readDrawingBufferContext } from '../__tests__/browser/fixtures/drawing-buffer';
 import { workflowCompositionMode } from './workflow-composition-tools.mjs';
 import { summarizeWorkflowComposition } from './workflow-input-tools.mjs';
 import {
@@ -25,6 +27,7 @@ import type {} from '../examples/workflow-canvas/benchmark-entry';
 test('trusted Workflow wheel path preserves the document and GPU ownership', async ({
   browser,
 }) => {
+  const preserveDrawingBuffer = drawingBufferMode();
   const compositionMode = workflowCompositionMode() as
     | CompositionCondition
     | undefined;
@@ -46,6 +49,13 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
     execFileSync('git', args, { encoding: 'utf8' }).trim();
   const capture = {
     schema: 1,
+    preserveDrawingBuffer,
+    drawingBufferContext: undefined as
+      | ReturnType<typeof readDrawingBufferContext>
+      | undefined,
+    drawingBufferContextAfter: undefined as
+      | ReturnType<typeof readDrawingBufferContext>
+      | undefined,
     uploadProbeRestored: undefined as boolean | undefined,
     composition: undefined as
       | Awaited<ReturnType<typeof installWorkflowComposition>>['metadata']
@@ -90,7 +100,10 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
     if (uploadMode) await installStrokeUploadProbe(page);
     await page.addInitScript(installProbes, { resourceStacks: false });
     await page.goto(
-      phaseMode ? '/?imageBatching=1&cameraPhases=1' : '/?imageBatching=1',
+      (phaseMode ? '/?imageBatching=1&cameraPhases=1' : '/?imageBatching=1') +
+        (preserveDrawingBuffer === undefined
+          ? ''
+          : '&preserveDrawingBuffer=' + Number(preserveDrawingBuffer)),
     );
     await page.waitForFunction(() => window.workflowDemo?.snapshot().ready);
     await page.locator('#scale').selectOption(String(count));
@@ -110,6 +123,10 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
         .some((n) => n.id === 'selection' && n.visibility === 'visible'),
     );
     await page.evaluate(() => window.workflowBenchmark.collect(2, 0));
+    if (preserveDrawingBuffer !== undefined)
+      capture.drawingBufferContext = await page
+        .locator('#canvas')
+        .evaluate(readDrawingBufferContext);
     if (compositionMode) {
       composition = await installWorkflowComposition(page, compositionMode);
       capture.composition = composition.metadata;
@@ -212,7 +229,10 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
             window.workflowBenchmark.armWheel(mode ? 'phases' : 'ordinary'),
           phaseMode,
         );
-        const dispatchedAt = composition ? performance.now() : undefined;
+        const dispatchedAt =
+          composition || preserveDrawingBuffer !== undefined
+            ? performance.now()
+            : undefined;
         await page.mouse.wheel(0, deltaY);
         const acknowledgedAt = composition ? performance.now() : undefined;
         const row = await page.evaluate(() =>
@@ -222,6 +242,11 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
           (row as any).compositionHost = {
             dispatchedAt,
             acknowledgedAt,
+            resultObservedAt: performance.now(),
+          };
+        if (preserveDrawingBuffer !== undefined)
+          (row as any).drawingBufferHost = {
+            dispatchedAt,
             resultObservedAt: performance.now(),
           };
         expect(row.input.isTrusted).toBe(true);
@@ -266,6 +291,10 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
         ),
       ),
     );
+    if (preserveDrawingBuffer !== undefined)
+      capture.drawingBufferContextAfter = await page
+        .locator('#canvas')
+        .evaluate(readDrawingBufferContext);
     expect(
       await page.evaluate(() => window.workflowBenchmark.replayDocument()),
     ).toEqual(originalDocument);

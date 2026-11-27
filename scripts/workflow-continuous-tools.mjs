@@ -1,3 +1,7 @@
+import {
+  qualifyDrawingBuffer,
+  drawingBufferSummary,
+} from './drawing-buffer-tools.mjs';
 import assert from 'node:assert/strict';
 import { replayStats } from './camera-replay-tools.mjs';
 const finite = (v) => Number.isFinite(v) && v >= 0;
@@ -222,6 +226,7 @@ export function summarizeContinuousGesture(g) {
   };
 }
 function summarizeCapture(c, timeline) {
+  qualifyDrawingBuffer(c);
   assert.equal(c.schema, 1);
   assert.equal(
     c.mode,
@@ -294,6 +299,7 @@ function summarizeCapture(c, timeline) {
   );
   return {
     source: c.source,
+    ...drawingBufferSummary(c),
     count: c.count,
     browser: c.browser,
     node: c.node,
