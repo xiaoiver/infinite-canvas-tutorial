@@ -68,24 +68,46 @@ export function flattenPath(
   strokeErrorBudget = false,
 ): PathPoints {
   const tolerance = PATH_PIXEL_ERROR / 2 / Math.max(scale, 1e-12);
-  // A circumscribed stroke join differs from its arc by r * (sec(theta) - 1).
-  // Screen stroke pages may use the full derived join budget. The legacy
-  // angular ceiling remains the default for complete/export drawcalls.
-  const angularCeiling =
-    strokeErrorBudget && strokeRadius <= 0.5 ? Math.PI / 2 : 0.25;
-  const turnLimit =
+  // Authored joins can amplify endpoint-angle changes. Spend the larger
+  // turn budget only on one open Bezier with a monotone control axis: its
+  // interior derivative cannot vanish, loop or reverse along that axis.
+  const strokeTurn =
     strokeRadius > 0
-      ? Math.min(
-          angularCeiling,
-          Math.acos(1 / (1 + PATH_PIXEL_ERROR / 2 / strokeRadius)),
-        )
+      ? Math.acos(1 / (1 + PATH_PIXEL_ERROR / 2 / strokeRadius))
       : Math.PI;
-  const endLimit =
-    strokeRadius > 0
-      ? Math.min(turnLimit, PATH_PIXEL_ERROR / 2 / strokeRadius)
-      : Math.PI;
-
   return subPaths.map((path) => {
+    const single =
+      strokeErrorBudget &&
+      strokeRadius <= 0.5 &&
+      subPaths.length === 1 &&
+      path.curves.length === 1 &&
+      !path.autoClose
+        ? controls(path.curves[0])
+        : undefined;
+    const monotone =
+      single &&
+      single.every((p) => p.every(Number.isFinite)) &&
+      [0, 1].some((axis) => {
+        const sign = Math.sign(
+          single[single.length - 1][axis] - single[0][axis],
+        );
+        return (
+          sign !== 0 &&
+          single.every(
+            (p, i) => i === 0 || sign * (p[axis] - single[i - 1][axis]) >= 0,
+          )
+        );
+      });
+    // A circumscribed smooth join differs from its arc by r*(sec(theta)-1).
+    // Full/export, compound/closed paths and unproved curves keep legacy turns.
+    const turnLimit =
+      strokeRadius > 0
+        ? Math.min(monotone ? Math.PI / 2 : 0.25, strokeTurn)
+        : Math.PI;
+    const endLimit =
+      strokeRadius > 0
+        ? Math.min(turnLimit, PATH_PIXEL_ERROR / 2 / strokeRadius)
+        : Math.PI;
     const points: Point[] = [];
     let splitsLeft = MAX_SEGMENTS - 1;
     const append = (p: Point) => {
@@ -160,7 +182,7 @@ export function flattenPath(
     path.curves.forEach((curve) => {
       splitsLeft = MAX_SEGMENTS - 1;
       append(pointAt(curve, 0));
-      const p = controls(curve);
+      const p = single ?? controls(curve);
       if (p) {
         bezier(p, 0, true, true);
       } else if (curve instanceof EllipseCurve) {

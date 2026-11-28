@@ -261,6 +261,36 @@ for (const backend of ['core', 'ecs'] as const) {
             expect(maxDifference).toBeLessThanOrEqual(80);
           }
         }
+        // Compound paths with an authored sharp join retain legacy sampling.
+        await patch({ d: 'M0 0 C280 0 -120 640 160 640 L120 0' });
+        await zoom(thinZoom);
+        const fallback = await state(page, backend);
+        expect(fallback.strokePages).toBe(1);
+        const fallbackPixels = PNG.sync.read(
+          await page.locator('canvas').screenshot(),
+        );
+        await enable(page, backend, false);
+        if (!webgl1)
+          expect((await state(page, backend)).native.indices).toBe(
+            fallback.native.indices,
+          );
+        const fullFallback = PNG.sync.read(
+          await page.locator('canvas').screenshot(),
+        );
+        expect(fullFallback.data.some((v, i) => i % 4 === 0 && v < 240)).toBe(
+          true,
+        );
+        expect(fullFallback.data.length).toBe(fallbackPixels.data.length);
+        let fallbackDifference = 0;
+        for (let i = 0; i < fullFallback.data.length; i++)
+          fallbackDifference = Math.max(
+            fallbackDifference,
+            Math.abs(fullFallback.data[i] - fallbackPixels.data[i]),
+          );
+        expect(fallbackDifference).toBeLessThanOrEqual(3);
+        await enable(page, backend, true);
+        await patch({ d: 'M0 0 C280 0 -120 640 160 640' });
+        await zoom(thinZoom);
         for (const partial of [false, true]) {
           const on = await page.evaluate(
             async ({ backend, partial }) =>

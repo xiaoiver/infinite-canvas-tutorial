@@ -22,7 +22,7 @@ export function hasSelfTouchingContour(contours: PathPoints): boolean {
 
 // Match the standalone core implementation; no cross-package runtime dependency.
 export class PathGeometryCache {
-  /** Screen-only thin solid strokes; full/export callers keep legacy sampling. */
+  /** Screen-only simple open Beziers; full/export callers keep legacy sampling. */
   constructor(private readonly strokeErrorBudget = false) {}
   // Contexts share parsed commands and four LRU levels, never hysteresis state.
   private geometry = {

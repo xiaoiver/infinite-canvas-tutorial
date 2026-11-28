@@ -128,6 +128,24 @@ describe.each([
       }
     });
 
+    it.each([
+      workflow + ' L0 0',
+      workflow + ' Z',
+      'M0 0 C200 300 -200 300 0 0',
+      'M0 0 C300 0 -300 0 0 0',
+      'M100 0 A100 30 35 1 1 -100 0',
+      workflow + ' M300 0 C370 0 270 160 340 160',
+    ])(
+      'keeps authored joins, closed/multipart and unproved curves exactly legacy: %s',
+      (d) => {
+        for (const scale of [1 / 64, 1 / 8, 0.5]) {
+          expect(
+            new implementation.PathGeometryCache(true).get(d, scale, 0.25),
+          ).toEqual(new implementation.PathGeometryCache().get(d, scale, 0.25));
+        }
+      },
+    );
+
     it('preserves independent hysteresis, live sample identity, source edits and authored corners', () => {
       const pool = new implementation.PathGeometryCache(true);
       const a = pool.fork(),

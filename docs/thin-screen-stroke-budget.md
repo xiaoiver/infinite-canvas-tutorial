@@ -12,16 +12,18 @@ for stroke joins/endpoints. They additionally impose a fixed 0.25-radian tangent
 ceiling. For a sufficiently thin stroke that ceiling is stricter than the
 existing error formula requires, even when the curve occupies only a few pixels.
 
-Only screen pages with a bucketed radius at most 0.5 physical px now use the full
+Only single, open Bézier paths with a bucketed radius at most 0.5 physical px
+and control points monotone along at least one nonconstant axis use the full
 join bound `r * (sec(theta) - 1) <= 0.125`. The existing control-polygon flatness,
 endpoint tangent test, exact command endpoints, Float32 seam handling and finite
-subdivision budgets remain in force. The derived angle stays below pi/2; tangent
-cones cannot silently accept a reversal. For smooth neighboring segments, their
+subdivision budgets remain in force. The monotone control axis proves the interior derivative never vanishes or
+reverses on that axis. The derived angle stays below pi/2; tangent cones cannot
+silently accept a reversal. For smooth neighboring segments, their
 half-angle is bounded by the same cone angle. Miter extension and bevel sag stay
-inside the reserved join budget. Authored command corners retain their original
-vertices and join/cap styles. Loops, cusps and pathological precision retain the
-existing bounded-work behavior; exhausting that budget is not an unconditional
-accuracy guarantee for arbitrary coordinates.
+inside the reserved join budget. Authored joins can amplify an endpoint-angle change, so compound, closed,
+multipart and unproved curves (including loops/reversals/arcs) retain exactly
+the original sampling. Pathological precision still has the existing work cap;
+exhausting it is not an unconditional accuracy guarantee for arbitrary coordinates.
 
 Thicker strokes keep the original angular ceiling. DPR participates through the
 actual render-pass metrics, rather than a CSS-size heuristic. Cache forks carry
@@ -51,9 +53,11 @@ complete exports, culling/reentry and strict GPU teardown. WebGL1's ANGLE extens
 bypasses this fixture's WebGL2 index counter: its pixel/export/resource assertions
 still run; no zero counter is claimed as a geometry reduction.
 
-## Qualified workload and source
+## Prototype measurements (final narrowed-source results pending)
 
-The measured local implementation is `e6f0baee06400ee4edaba156d1129c79e162be5f`,
+The following measurements describe the earlier broader prototype. They are
+retained during final revalidation, not presented as the final narrowed-source
+results. The measured local implementation is `e6f0baee06400ee4edaba156d1129c79e162be5f`,
 clean tree `2da8a8d167d42e719d64b07649285789ed4bb2ba`. Public implementation/test
 head [b451804](https://github.com/xiaoiver/infinite-canvas-tutorial/commit/b451804d3041b5519bc4d0262273d3bd4adcaf3f)
 has that exact tree. This report changes no measured runtime code.
