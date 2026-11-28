@@ -1,4 +1,9 @@
 import {
+  qualifyDrawingBuffer,
+  sameDrawingBufferScope,
+  drawingBufferSummary,
+} from './drawing-buffer-tools.mjs';
+import {
   sameStrokeTextureScope,
   qualifyStrokeTexture,
 } from './stroke-texture-bench-tools.mjs';
@@ -22,6 +27,7 @@ export function replayStats(values) {
   };
 }
 function rows(capture) {
+  qualifyDrawingBuffer(capture);
   assert.equal(capture.schema, 1, 'Replay schema differs');
   assert(
     capture.mode === undefined,
@@ -189,7 +195,21 @@ export function summarizeReplay(capture) {
     groups.get(group).push(row);
   }
   return [...groups].map(([key, values]) => ({
+    ...(capture.preserveDrawingBuffer === undefined
+      ? {}
+      : { preserveDrawingBuffer: capture.preserveDrawingBuffer }),
     key,
+    ...(capture.preserveDrawingBuffer === undefined
+      ? {}
+      : {
+          hostOperationToResultMs: replayStats(
+            values.map(
+              ({ step }) =>
+                step.drawingBufferHost.resultObservedAt -
+                step.drawingBufferHost.dispatchedAt,
+            ),
+          ),
+        }),
     steps: values.length,
     preparationFrames: values.reduce((n, r) => n + r.step.frames.length - 1, 0),
     visible: [
@@ -227,6 +247,7 @@ export function compareReplays(
   { requireNativeParity = false } = {},
 ) {
   sameStrokeTextureScope(before, after);
+  sameDrawingBufferScope(before, after);
   for (const key of ['workload', 'traceHash', 'browser', 'node', 'viewport'])
     assert.deepEqual(before[key], after[key], `Capture ${key} differs`);
   const a = rows(before),
@@ -250,6 +271,18 @@ export function compareReplays(
       y.frame.data.surface,
       `Actual surface differs: ${key}`,
     );
+    if (before.preserveDrawingBuffer !== undefined) {
+      assert.deepEqual(
+        x.frame.data.native,
+        y.frame.data.native,
+        `Native work differs for drawing-buffer settings: ${key}`,
+      );
+      assert.deepEqual(
+        x.frame.data.resources,
+        y.frame.data.resources,
+        `Resource ownership differs for drawing-buffer settings: ${key}`,
+      );
+    }
     const fields = ['drawcalls', 'indices', 'arrayVertices'];
     if (fields.some((k) => x.frame.data.native[k] !== y.frame.data.native[k])) {
       if (requireNativeParity)
@@ -266,6 +299,14 @@ export function compareReplays(
     }
   }
   return {
+    ...(before.preserveDrawingBuffer === undefined
+      ? {}
+      : {
+          drawingBuffer: {
+            before: drawingBufferSummary(before),
+            after: drawingBufferSummary(after),
+          },
+        }),
     matchedSteps: a.size,
     before: summarizeReplay(before),
     after: summarizeReplay(after),

@@ -1,3 +1,7 @@
+import {
+  drawingBufferQuery,
+  installDrawingBufferProbe,
+} from '../../__tests__/browser/fixtures/drawing-buffer';
 import { continuousWheel } from '../../__tests__/browser/fixtures/continuous-wheel';
 import { zoomAt } from './graph';
 import { installECSCameraPhases } from '../../__tests__/browser/fixtures/ecs-camera-phases';
@@ -27,6 +31,10 @@ import { mixedFrameProbe } from '../../__tests__/browser/fixtures/mixed-frame-pr
 const canvas = document.querySelector<HTMLCanvasElement>('#canvas')!;
 const originalGetContext = canvas.getContext;
 const native = mixedFrameProbe(canvas);
+const drawingBufferProbe = installDrawingBufferProbe(
+  canvas,
+  drawingBufferQuery(location.search),
+);
 const runtime: { api?: ECS.API; app?: ECS.App } = {};
 let active = false;
 let previous = 0;
@@ -198,6 +206,7 @@ ECS.App.prototype.run = async function () {
   runtime.app = this;
   runtime.api!.onDestroy(() => {
     continuous.dispose();
+    drawingBufferProbe?.dispose();
     clearContinuousMarks();
     replay.dispose();
     wheelInput.dispose();
@@ -562,6 +571,7 @@ const harness = {
     if (disposed) return;
     disposed = true;
     continuous.dispose();
+    drawingBufferProbe?.dispose();
     clearContinuousMarks();
     replay.dispose();
     wheelInput.dispose();

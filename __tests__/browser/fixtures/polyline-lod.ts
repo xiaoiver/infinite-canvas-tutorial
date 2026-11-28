@@ -1,3 +1,7 @@
+import {
+  drawingBufferQuery,
+  installDrawingBufferProbe,
+} from './drawing-buffer';
 import { installECSCameraPhases } from './ecs-camera-phases';
 import {
   API,
@@ -150,6 +154,10 @@ for (const prototype of [
     };
   }
 }
+const drawingBufferProbe = installDrawingBufferProbe(
+  document.querySelector('canvas')!,
+  drawingBufferQuery(location.search),
+);
 let api: API, pipeline: MeshPipeline;
 class ProbePolyline extends System {
   pipeline = this.attach(MeshPipeline);
@@ -548,6 +556,13 @@ const harness = {
       resources: window.lifecycleProbes?.resources(),
     };
   },
+  offscreenDrawingBufferPolicy() {
+    const element = (pipeline as any).setupDevice
+      .getOffscreenGPUResource()
+      .swapChain.getCanvas();
+    const gl = element.getContext('webgl2') || element.getContext('webgl');
+    return gl.getContextAttributes().preserveDrawingBuffer as boolean;
+  },
   async export(partial: boolean, id = 'line') {
     const canvas = api.getCanvas();
     const result = await new Promise<string>((resolve, reject) => {
@@ -604,6 +619,7 @@ const harness = {
     try {
       await app.exit();
     } finally {
+      drawingBufferProbe?.dispose();
       replayPhases.dispose();
     }
   },

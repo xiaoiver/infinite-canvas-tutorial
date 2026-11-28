@@ -1,3 +1,7 @@
+import {
+  drawingBufferQuery,
+  installDrawingBufferProbe,
+} from './drawing-buffer';
 import { installCameraPhases } from './camera-phase-probe';
 import { framePhaseProbe } from './frame-phase-probe';
 import {
@@ -149,6 +153,10 @@ const dpr = Number(query.get('dpr')) || 1;
 const element = document.querySelector('canvas')!;
 element.width = 800 * dpr;
 element.height = 600 * dpr;
+const drawingBufferProbe = installDrawingBufferProbe(
+  element,
+  drawingBufferQuery(location.search),
+);
 const canvas = await new Canvas({
   canvas: element,
   devicePixelRatio: dpr,
@@ -550,6 +558,7 @@ const api = {
   destroy() {
     replayDisposed = true;
     replayPhases.dispose();
+    drawingBufferProbe?.dispose();
     canvas.destroy();
     return deviceBaseline;
   },

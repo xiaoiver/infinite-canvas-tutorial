@@ -1,3 +1,5 @@
+import { drawingBufferMode } from './drawing-buffer-tools.mjs';
+import { readDrawingBufferContext } from '../__tests__/browser/fixtures/drawing-buffer';
 import {
   strokeUploadMode,
   summarizeStrokeUploads,
@@ -25,6 +27,7 @@ declare global {
   }
 }
 test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
+  const preserveDrawingBuffer = drawingBufferMode();
   const phaseMode = cameraPhaseMode();
   const uploadMode = strokeUploadMode();
   const git = (...args: string[]) =>
@@ -33,6 +36,7 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
     viewport = { width: 1000, height: 760, dpr: 1 };
   const capture = {
     schema: CAMERA_REPLAY_VERSION,
+    preserveDrawingBuffer,
     mode: uploadMode
       ? 'stroke-upload-diagnostic'
       : phaseMode
@@ -71,7 +75,12 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
       await page.goto(
         (backend === 'core'
           ? '/core-path-instances.html'
-          : '/polyline-lod.html') + (phaseMode ? '?cameraPhases=1' : ''),
+          : '/polyline-lod.html') +
+          (phaseMode
+            ? '?cameraPhases=1'
+            : preserveDrawingBuffer === undefined
+            ? ''
+            : '?preserveDrawingBuffer=' + Number(preserveDrawingBuffer)),
       );
       await expect(page.locator('#status')).toHaveText('Ready');
       await page.evaluate(
@@ -98,6 +107,13 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
       const result = {
         backend,
         mode: 'scoped',
+        drawingBufferContextAfter: undefined as
+          | ReturnType<typeof readDrawingBufferContext>
+          | undefined,
+        drawingBufferContext:
+          preserveDrawingBuffer === undefined
+            ? undefined
+            : await page.locator('canvas').evaluate(readDrawingBufferContext),
         rounds: [] as any[],
         documentSame: false,
         teardown: 'pending',
@@ -113,6 +129,8 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
             await page.evaluate(() =>
               (window as any).strokeUploadProbe.begin(),
             );
+          const dispatchedAt =
+            preserveDrawingBuffer === undefined ? undefined : performance.now();
           const step = await page.evaluate(
             async ({ backend, view }) =>
               backend === 'core'
@@ -120,6 +138,11 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
                 : await window.polylineLOD.replayCamera(view),
             { backend, view },
           );
+          if (preserveDrawingBuffer !== undefined)
+            (step as any).drawingBufferHost = {
+              dispatchedAt,
+              resultObservedAt: performance.now(),
+            };
           expect(sameReplayView(step.frames.at(-1)!.view, view)).toBe(true);
           if (id === 'offscreen')
             expect(step.frames.at(-1)!.data.visible).toBe(0);
@@ -146,6 +169,10 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
           ),
         ),
       );
+      if (preserveDrawingBuffer !== undefined)
+        result.drawingBufferContextAfter = await page
+          .locator('canvas')
+          .evaluate(readDrawingBufferContext);
       expect(
         await page.evaluate(
           (b) =>

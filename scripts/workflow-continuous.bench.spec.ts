@@ -1,3 +1,5 @@
+import { drawingBufferMode } from './drawing-buffer-tools.mjs';
+import { readDrawingBufferContext } from '../__tests__/browser/fixtures/drawing-buffer';
 import { startCameraTimeline } from './camera-timeline';
 import {
   continuousTimelineMode,
@@ -15,6 +17,7 @@ import type {} from '../examples/workflow-canvas/benchmark-entry';
 test('continuous trusted wheel stream reaches the final Workflow camera without per-input frame waits', async ({
   browser,
 }) => {
+  const preserveDrawingBuffer = drawingBufferMode();
   const timelineMode = continuousTimelineMode();
   if (timelineMode && browser.browserType().name() !== 'chromium')
     throw new Error('Continuous timeline requires Chromium CDP');
@@ -27,6 +30,13 @@ test('continuous trusted wheel stream reaches the final Workflow camera without 
     execFileSync('git', args, { encoding: 'utf8' }).trim();
   const capture = {
     schema: 1,
+    preserveDrawingBuffer,
+    drawingBufferContext: undefined as
+      | ReturnType<typeof readDrawingBufferContext>
+      | undefined,
+    drawingBufferContextAfter: undefined as
+      | ReturnType<typeof readDrawingBufferContext>
+      | undefined,
     mode: timelineMode ? 'continuous-input-timeline' : 'continuous-input',
     ...(timelineMode
       ? {
@@ -73,7 +83,11 @@ test('continuous trusted wheel stream reaches the final Workflow camera without 
   try {
     await page.addInitScript(installProbes, { resourceStacks: false });
     await page.goto(
-      '/?imageBatching=1' + (timelineMode ? '&continuousTrace=1' : ''),
+      '/?imageBatching=1' +
+        (timelineMode ? '&continuousTrace=1' : '') +
+        (preserveDrawingBuffer === undefined
+          ? ''
+          : '&preserveDrawingBuffer=' + Number(preserveDrawingBuffer)),
     );
     await page.waitForFunction(() => window.workflowDemo?.snapshot().ready);
     await page.locator('#scale').selectOption(String(count));
@@ -91,6 +105,10 @@ test('continuous trusted wheel stream reaches the final Workflow camera without 
         .some((n) => n.id === 'selection' && n.visibility === 'visible'),
     );
     await page.evaluate(() => window.workflowBenchmark.collect(2, 0));
+    if (preserveDrawingBuffer !== undefined)
+      capture.drawingBufferContext = await page
+        .locator('#canvas')
+        .evaluate(readDrawingBufferContext);
     // Positive control: this observer cannot certify synthetic DOM dispatch.
     await page.evaluate(() => {
       window.workflowBenchmark.startContinuousWheel('control');
@@ -215,6 +233,10 @@ test('continuous trusted wheel stream reaches the final Workflow camera without 
       await timeline.stop(continuousTimelineWindows(capture));
       capture.timeline!.stopped = true;
     }
+    if (preserveDrawingBuffer !== undefined)
+      capture.drawingBufferContextAfter = await page
+        .locator('#canvas')
+        .evaluate(readDrawingBufferContext);
     expect(
       await page.evaluate(() => window.workflowBenchmark.replayDocument()),
     ).toEqual(documentBefore);

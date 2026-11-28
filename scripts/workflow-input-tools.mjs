@@ -1,3 +1,8 @@
+import {
+  qualifyDrawingBuffer,
+  sameDrawingBufferScope,
+  drawingBufferSummary,
+} from './drawing-buffer-tools.mjs';
 import { qualifyWorkflowComposition } from './workflow-composition-tools.mjs';
 import {
   sameStrokeTextureScope,
@@ -31,6 +36,7 @@ function view(v) {
   );
 }
 function qualify(capture, composition = false) {
+  qualifyDrawingBuffer(capture);
   if (composition) qualifyWorkflowComposition(capture);
   else
     assert.equal(
@@ -239,12 +245,15 @@ function qualify(capture, composition = false) {
       browser: capture.browser,
       node: capture.node,
       strokeTexture: capture.strokeTexture,
+      preserveDrawingBuffer: capture.preserveDrawingBuffer,
       textureProbeRestored: capture.textureProbeRestored,
       trace,
       traceHash: cameraTraceHash(capture.workload, trace, capture.viewport),
       results: [
         {
           backend: 'ecs',
+          drawingBufferContext: capture.drawingBufferContext,
+          drawingBufferContextAfter: capture.drawingBufferContextAfter,
           mode: 'trusted-wheel',
           documentSame: true,
           teardown: 'passed',
@@ -292,6 +301,17 @@ function summarize(capture, composition = false) {
             ),
           }
         : {}),
+      ...(capture.preserveDrawingBuffer === undefined
+        ? {}
+        : {
+            hostCommandToResultMs: stats(
+              round.steps.map(
+                (s) =>
+                  s.drawingBufferHost.resultObservedAt -
+                  s.drawingBufferHost.dispatchedAt,
+              ),
+            ),
+          }),
       steps: frames.length,
       engineWallMs: stats(frames.map((f) => f.elapsed)),
       inputToFrameMs: stats(round.steps.map((s) => s.inputToFrameMs)),
@@ -320,6 +340,7 @@ function compare(before, after, composition = false) {
   qualify(before, composition);
   qualify(after, composition);
   sameStrokeTextureScope(before, after);
+  sameDrawingBufferScope(before, after);
   for (const k of [
     'schema',
     'workload',
@@ -363,8 +384,16 @@ function compare(before, after, composition = false) {
   return {
     matchedSteps: before.deltas.length * 2,
     nativeParity: 'all counters',
-    before: { source: before.source, rounds: summarize(before, composition) },
-    after: { source: after.source, rounds: summarize(after, composition) },
+    before: {
+      source: before.source,
+      ...drawingBufferSummary(before),
+      rounds: summarize(before, composition),
+    },
+    after: {
+      source: after.source,
+      ...drawingBufferSummary(after),
+      rounds: summarize(after, composition),
+    },
   };
 }
 

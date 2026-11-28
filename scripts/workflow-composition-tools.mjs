@@ -74,6 +74,16 @@ export function qualifyCompositionState(composition) {
   );
 }
 export function qualifyWorkflowComposition(capture) {
+  assert.equal(
+    capture.preserveDrawingBuffer,
+    undefined,
+    'CSS and context captures must stay separate',
+  );
+  assert.equal(
+    capture.drawingBufferContext,
+    undefined,
+    'CSS and context captures must stay separate',
+  );
   assert.equal(capture.mode, 'workflow-composition-diagnostic');
   assert(capture.composition, 'Missing composition metadata');
   qualifyCompositionState(capture.composition);
