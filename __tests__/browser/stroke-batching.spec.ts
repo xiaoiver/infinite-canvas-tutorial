@@ -226,7 +226,14 @@ for (const backend of ['core', 'ecs'] as const) {
             await enable(page, backend, true);
             const on = await state(page, backend);
             expect(on.document).toEqual(off.document);
-            expect(on.native.indices).toBeLessThan(off.native.indices);
+            expect(on.strokePages).toBe(1);
+            // This fixture observes WebGL2 instanced submissions; WebGL1's
+            // ANGLE extension bypasses that native index counter. Pixels below
+            // still require a real nonblank stroke in both context versions.
+            if (!webgl1) {
+              expect(off.native.indices).toBeGreaterThan(0);
+              expect(on.native.indices).toBeLessThan(off.native.indices);
+            }
             const thin = PNG.sync.read(
               await page.locator('canvas').screenshot(),
             );
