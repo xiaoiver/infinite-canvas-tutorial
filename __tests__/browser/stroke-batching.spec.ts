@@ -163,6 +163,138 @@ for (const backend of ['core', 'ecs'] as const) {
       await enable(page, backend, false);
       expect((await state(page, backend)).strokePages).toBe(0);
     });
+    for (const webgl1 of [false, true])
+      test(`thin cubic pages keep the pixel budget and exact exports (WebGL${
+        webgl1 ? 1 : 2
+      })`, async ({ page }) => {
+        if (webgl1) {
+          await page.addInitScript(() => {
+            const get = HTMLCanvasElement.prototype.getContext;
+            HTMLCanvasElement.prototype.getContext = function (
+              type: string,
+              ...args: unknown[]
+            ) {
+              return type === 'webgl2' ? null : get.call(this, type, ...args);
+            } as typeof get;
+          });
+          await page.reload();
+          await expect(page.locator('#status')).toHaveText('Ready');
+        }
+        await scene(page, backend, 1);
+        // Core's fixture explicitly uses DPR 1; ECS follows the browser profile.
+        const dpr =
+          backend === 'core' ? 1 : await page.evaluate(() => devicePixelRatio);
+        const thinZoom = 1 / (32 * dpr);
+        const zoom = async (value: number) =>
+          page.evaluate(
+            async ({ backend, value }) => {
+              if (backend === 'core') {
+                window.corePathInstances.camera(0.001, value);
+                window.corePathInstances.camera(0, value);
+              } else {
+                await window.polylineLOD.zoom(value);
+                await window.polylineLOD.camera(0.001);
+                window.polylineLOD.resetWork();
+                await window.polylineLOD.camera(0);
+              }
+            },
+            { backend, value },
+          );
+        const patch = async (value: Record<string, unknown>) =>
+          page.evaluate(
+            async ({ backend, value }) => {
+              if (backend === 'core') window.corePathInstances.mutate(0, value);
+              else await window.polylineLOD.patch(value);
+            },
+            { backend, value },
+          );
+        for (const strokeLinejoin of ['miter', 'round', 'bevel']) {
+          for (const strokeLinecap of ['butt', 'round', 'square']) {
+            await enable(page, backend, false);
+            await patch({
+              d: 'M0 0 C280 0 -120 640 160 640',
+              strokeWidth: 16,
+              strokeLinejoin,
+              strokeLinecap,
+              opacity: 1,
+            });
+            await zoom(thinZoom);
+            const off = await state(page, backend);
+            const full = PNG.sync.read(
+              await page.locator('canvas').screenshot(),
+            );
+            await enable(page, backend, true);
+            const on = await state(page, backend);
+            expect(on.document).toEqual(off.document);
+            expect(on.native.indices).toBeLessThan(off.native.indices);
+            const thin = PNG.sync.read(
+              await page.locator('canvas').screenshot(),
+            );
+            expect([thin.width, thin.height]).toEqual([
+              full.width,
+              full.height,
+            ]);
+            let originalInk = 0,
+              currentInk = 0,
+              maxDifference = 0;
+            for (let i = 0; i < full.data.length; i += 4) {
+              originalInk += 255 - full.data[i];
+              currentInk += 255 - thin.data[i];
+              for (let c = 0; c < 3; c++)
+                maxDifference = Math.max(
+                  maxDifference,
+                  Math.abs(full.data[i + c] - thin.data[i + c]),
+                );
+            }
+            // A subpixel centerline/normal budget allows changed edge coverage,
+            // but no missing stroke or multi-pixel facet. Full path is the control.
+            expect(originalInk).toBeGreaterThan(1000);
+            expect(currentInk / originalInk).toBeGreaterThan(0.95);
+            expect(currentInk / originalInk).toBeLessThan(1.05);
+            expect(maxDifference).toBeLessThanOrEqual(80);
+          }
+        }
+        for (const partial of [false, true]) {
+          const on = await page.evaluate(
+            async ({ backend, partial }) =>
+              backend === 'core'
+                ? window.corePathInstances.export(partial)
+                : window.polylineLOD.export(partial),
+            { backend, partial },
+          );
+          await enable(page, backend, false);
+          const off = await page.evaluate(
+            async ({ backend, partial }) =>
+              backend === 'core'
+                ? window.corePathInstances.export(partial)
+                : window.polylineLOD.export(partial),
+            { backend, partial },
+          );
+          expect(on).toBe(off);
+          await enable(page, backend, true);
+        }
+        // High zoom returns to the unchanged angular ceiling, not a retained
+        // overview mesh; then culling/reentry reuses only live screen geometry.
+        await zoom(4);
+        const high = (await state(page, backend)).native.indices;
+        await enable(page, backend, false);
+        expect((await state(page, backend)).native.indices).toBe(high);
+        await enable(page, backend, true);
+        await zoom(thinZoom);
+        const low = (await state(page, backend)).native.indices;
+        await page.evaluate(async (b) => {
+          if (b === 'core') return window.corePathInstances.camera(10000);
+          window.polylineLOD.resetWork();
+          await window.polylineLOD.camera(10000);
+        }, backend);
+        expect((await state(page, backend)).visible).toBe(0);
+        await page.evaluate(async (b) => {
+          if (b === 'core') return window.corePathInstances.camera(0);
+          window.polylineLOD.resetWork();
+          await window.polylineLOD.camera(0);
+        }, backend);
+        expect((await state(page, backend)).native.indices).toBe(low);
+      });
     test('additional pages retain only their dynamic buffers and release shared constants on retirement', async ({
       page,
     }) => {

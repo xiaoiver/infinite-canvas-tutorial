@@ -65,12 +65,20 @@ export function flattenPath(
   subPaths: CurvePath[],
   scale: number,
   strokeRadius = 0,
+  strokeErrorBudget = false,
 ): PathPoints {
   const tolerance = PATH_PIXEL_ERROR / 2 / Math.max(scale, 1e-12);
   // A circumscribed stroke join differs from its arc by r * (sec(theta) - 1).
+  // Screen stroke pages may use the full derived join budget. The legacy
+  // angular ceiling remains the default for complete/export drawcalls.
+  const angularCeiling =
+    strokeErrorBudget && strokeRadius <= 0.5 ? Math.PI / 2 : 0.25;
   const turnLimit =
     strokeRadius > 0
-      ? Math.min(0.25, Math.acos(1 / (1 + PATH_PIXEL_ERROR / 2 / strokeRadius)))
+      ? Math.min(
+          angularCeiling,
+          Math.acos(1 / (1 + PATH_PIXEL_ERROR / 2 / strokeRadius)),
+        )
       : Math.PI;
   const endLimit =
     strokeRadius > 0

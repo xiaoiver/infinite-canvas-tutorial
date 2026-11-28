@@ -9,6 +9,34 @@ export function strokeReuseContract(
     draw.prepareGeometry({});
     return draw.pathPoints.get(shape);
   };
+  it('spends the thin-stroke budget only in screen pages and keeps retired contexts independent', () => {
+    const shape = makePath(),
+      device = {};
+    changePath(shape, 'M0 0 C70 0 -30 160 40 160');
+    const screen = makeDraw(device),
+      full = makeDraw(device, true);
+    const uniforms = {
+      u_ProjectionMatrix: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+      u_ViewMatrix: [1 / 32, 0, 0, 0, 1 / 32, 0, 0, 0, 1],
+      u_Viewport: [2, 2],
+    };
+    const sample = (draw: any) => {
+      draw.shapes = [shape];
+      draw.prepareGeometry(uniforms);
+      return draw.pathPoints.get(shape);
+    };
+    const low = sample(screen),
+      original = sample(full);
+    expect(low[0].length).toBeLessThan(original[0].length);
+    screen.destroy();
+    const reentered = makeDraw(device);
+    expect(sample(reentered)).toBe(low);
+    expect(sample(makeDraw(device, true))).toEqual(original);
+    uniforms.u_ViewMatrix[0] = uniforms.u_ViewMatrix[4] = 16;
+    expect(sample(reentered)).toEqual(sample(full));
+    reentered.destroy();
+    full.destroy();
+  });
   it('reuses screen curve levels across page retirement while full passes and devices stay independent', () => {
     const shape = makePath(),
       owner = {};
