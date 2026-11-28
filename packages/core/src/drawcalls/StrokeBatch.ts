@@ -41,7 +41,9 @@ export class StrokeBatch extends SmoothPolyline {
   protected override createPathGeometryCache(shape: Shape) {
     const caches = screenStrokeCaches(this.device).geometry;
     let geometry = caches.get(shape);
-    if (!geometry) caches.set(shape, (geometry = new PathGeometryCache()));
+    // Opt-in screen pages can spend the existing error budget on thin curves.
+    // Full/export drawcalls create their separate default-precision caches.
+    if (!geometry) caches.set(shape, (geometry = new PathGeometryCache(true)));
     return geometry.fork();
   }
 

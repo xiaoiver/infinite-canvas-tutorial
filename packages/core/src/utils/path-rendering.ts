@@ -22,6 +22,8 @@ export function hasSelfTouchingContour(contours: PathPoints): boolean {
 
 // Match the standalone core implementation; no cross-package runtime dependency.
 export class PathGeometryCache {
+  /** Screen-only simple open Beziers; full/export callers keep legacy sampling. */
+  constructor(private readonly strokeErrorBudget = false) {}
   // Contexts share parsed commands and four LRU levels, never hysteresis state.
   private geometry = {
     d: undefined as string | undefined,
@@ -36,7 +38,7 @@ export class PathGeometryCache {
 
   /** Start an independent render context backed by the same CPU geometry. */
   fork(): PathGeometryCache {
-    const context = new PathGeometryCache();
+    const context = new PathGeometryCache(this.strokeErrorBudget);
     context.geometry = this.geometry;
     return context;
   }
@@ -66,7 +68,12 @@ export class PathGeometryCache {
     const key = `${this.scale}:${this.radius}`;
     let points = geometry.levels.get(key);
     if (!points)
-      points = flattenPath(geometry.subPaths, this.scale, this.radius);
+      points = flattenPath(
+        geometry.subPaths,
+        this.scale,
+        this.radius,
+        this.strokeErrorBudget,
+      );
     geometry.levels.delete(key);
     geometry.levels.set(key, points);
     if (geometry.levels.size > 4)
