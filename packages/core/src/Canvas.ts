@@ -127,6 +127,7 @@ export const getDefaultAppState = (): AppState => ({
 
 export class Canvas {
   #instancePromise: Promise<this>;
+  #destroyed = false;
 
   #pluginContext: PluginContext;
   get pluginContext() {
@@ -291,6 +292,13 @@ export class Canvas {
       return this;
     })();
 
+    // Destruction may cancel initialization before a caller starts awaiting it.
+    // Observe the internal promise while preserving rejection for initialized.
+    this.#instancePromise.catch((error) => {
+      if (!this.#destroyed)
+        console.error('Failed to initialize canvas GPU resources', error);
+    });
+
     this.mode = mode;
   }
 
@@ -375,6 +383,8 @@ export class Canvas {
    * Destroy the canvas.
    */
   destroy() {
+    if (this.#destroyed) return;
+    this.#destroyed = true;
     const { hooks } = this.#pluginContext;
     hooks.destroy.call();
   }

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Workflow startup regression</title>
+  </head>
+  <body>
+    <script type="module">
+      // Reuse shipped markup and its real entry instead of maintaining a copied UI.
+      import markup from '../../../examples/workflow-canvas/index.html?raw';
+      document.documentElement.innerHTML = markup;
+      await import('../../../examples/workflow-canvas/main.ts');
+    </script>
+  </body>
+</html>

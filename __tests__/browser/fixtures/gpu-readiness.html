@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>GPU readiness regression</title>
+  </head>
+  <body>
+    <output id="status">Starting</output>
+    <button id="start" disabled>Start fixture</button>
+    <section id="failed-section">
+      <canvas id="failed" width="200" height="160"></canvas>
+    </section>
+    <section id="healthy-section">
+      <canvas id="healthy" width="200" height="160"></canvas>
+    </section>
+    <script type="module" src="./gpu-readiness.ts"></script>
+  </body>
+</html>

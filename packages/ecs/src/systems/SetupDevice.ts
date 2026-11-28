@@ -1,3 +1,4 @@
+import type { CanvasInitialization } from '../resources/CanvasInitialization';
 import { Entity, System } from '@lastolivegames/becsy';
 import {
   DeviceContribution,
@@ -16,6 +17,7 @@ type CanvasResources = {
   resource?: GPUResource;
   attached: boolean;
   cancelled: boolean;
+  initialization?: CanvasInitialization;
 };
 
 /**
@@ -69,6 +71,7 @@ export class SetupDevice extends System {
       const entry = this.#resources.get(canvas.__id);
       if (entry) {
         entry.cancelled = true;
+        entry.initialization?.cancel();
         entry.resource?.scope.dispose();
         this.#resources.delete(canvas.__id);
       }
@@ -95,6 +98,7 @@ export class SetupDevice extends System {
         canvas: canvas.hold(),
         attached: false,
         cancelled: false,
+        initialization: canvas.read(Canvas).initialization,
       };
       this.#resources.set(canvas.__id, entry);
       // Copy component values before crossing an asynchronous boundary.
@@ -116,6 +120,7 @@ export class SetupDevice extends System {
       };
       this.initializeCanvas(entry, props).catch((error) => {
         if (!this.#disposed && !entry.cancelled) {
+          entry.initialization?.reject(error);
           console.error('Failed to initialize canvas GPU resources', error);
         }
       });
@@ -124,13 +129,31 @@ export class SetupDevice extends System {
     // Attach completed resources only while executing in the owning system.
     this.#resources.forEach((entry) => {
       if (entry.resource && !entry.attached) {
-        const { width, height, devicePixelRatio } = entry.canvas.read(Canvas);
-        entry.resource.swapChain.configureSwapChain(
-          Math.floor(width * devicePixelRatio),
-          Math.floor(height * devicePixelRatio),
-        );
-        entry.canvas.add(GPUResource, entry.resource);
-        entry.attached = true;
+        try {
+          const { width, height, devicePixelRatio } = entry.canvas.read(Canvas);
+          entry.resource.swapChain.configureSwapChain(
+            Math.floor(width * devicePixelRatio),
+            Math.floor(height * devicePixelRatio),
+          );
+          entry.canvas.add(GPUResource, entry.resource);
+          entry.attached = true;
+          entry.initialization?.resolve();
+        } catch (error) {
+          // Do not let a failed late resize publish readiness, retry a dead
+          // resource on every frame, or stop another canvas in the same World.
+          const resource = entry.resource;
+          entry.resource = undefined;
+          entry.initialization?.reject(error);
+          try {
+            resource.scope.dispose();
+          } catch (cleanupError) {
+            console.error(
+              'Failed to release uninitialized canvas resources',
+              cleanupError,
+            );
+          }
+          console.error('Failed to attach canvas GPU resources', error);
+        }
       }
     });
 
@@ -152,6 +175,7 @@ export class SetupDevice extends System {
     this.#disposed = true;
     this.#resources.forEach((entry) => {
       entry.cancelled = true;
+      entry.initialization?.cancel();
       entry.resource?.scope.dispose();
     });
     this.#resources.clear();

@@ -38,6 +38,20 @@ await app.run();
 
 参数会在构造时复制。调整容量需要先退出 App，再创建新的 App。`new App()` 保留现有默认值。较小的容量可以降低 ECS 分配开销，但不会改变 GPU 纹理或几何内存，也不会解除同一 JavaScript 环境中多个 App 共享组件类型的并发限制。
 
+## 等待 GPU 就绪 {#gpu-readiness}
+
+`await app.run()` 表示 ECS World 已启动，设备仍可能在异步初始化。使用默认
+WebGL/WebGPU 渲染器时，在 API 创建画布后、System 的 `initialize()` / `execute()`
+之外调用 `await api.initialized`。仅在 `GPUResource` 附着后才返回该 API；初始化失败
+（包括共享离屏设备失败）会以原始错误拒绝。等待期间销毁或移除画布也会拒绝，之后的
+异步成功不会复活已取消的等待。每个画布独立记录结果，屏幕设备失败不会影响健康画布。
+
+该可选生命周期信号不等待场景帧，也不代表 GPU 执行、屏幕呈现或之后的上下文恢复。
+自定义设备系统负责自己的就绪契约。不使用此信号的应用保留现有错误日志。不能依据
+空 World 的执行次数报告渲染就绪或帧率。Core 已提供 `Canvas.initialized`；应保留
+Canvas 引用，在初始化失败后调用 `destroy()` 释放监听器和已分配的资源。
+销毁仍在初始化的 Core 画布会立即拒绝等待，并释放之后到达的设备，避免画布复活。
+
 ## 使用 WebComponents {#use-webcomponents}
 
 首先引入组件库：
