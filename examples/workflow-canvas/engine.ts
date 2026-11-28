@@ -131,7 +131,20 @@ export async function createEngine(
       system((s) => s.before(ComputeZIndex))(Bootstrap);
     },
   );
-  await app.run();
+  try {
+    await app.run();
+    // A running World can exist even when context creation failed. Do not
+    // return an engine or count empty executions as successful rendering.
+    await api.initialized;
+  } catch (error) {
+    try {
+      await app.exit();
+    } catch (cleanupError) {
+      console.error('Failed to release the unavailable renderer', cleanupError);
+    }
+    Object.values(textures).forEach((url) => URL.revokeObjectURL(url));
+    throw error;
+  }
   // Measure completed engine frames, not an unrelated UI requestAnimationFrame.
   // elapsed includes world.execute's async work; it is not GPU execution time.
   const execute = app.world.execute.bind(app.world);

@@ -66,6 +66,7 @@ jobs:
           xvfb-run -s "-ac -screen 0 1280x1024x16"
           pnpm exec jest -c jest.config.js --runInBand --runTestsByPath
           __tests__/unit/drawing-buffer-probe.spec.ts
+          __tests__/unit/core-renderer-initialization.spec.ts
           __tests__/unit/core-image-texture-pool.spec.ts
           __tests__/unit/core-glyph-atlas-pool.spec.ts
           __tests__/unit/core-glyph-manager.lifecycle.spec.ts

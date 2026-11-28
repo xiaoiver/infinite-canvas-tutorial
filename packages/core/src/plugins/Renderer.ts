@@ -34,6 +34,8 @@ export enum Theme {
 }
 
 export class Renderer implements Plugin {
+  #destroyed = false;
+  #cancelInitialization?: () => void;
   #swapChain: SwapChain;
   #device: Device;
   #renderTarget: RenderTarget;
@@ -129,60 +131,88 @@ export class Renderer implements Plugin {
     };
 
     hooks.initAsync.tapPromise(async () => {
-      let deviceContribution: DeviceContribution;
-      if (renderer === 'webgl') {
-        deviceContribution = new WebGLDeviceContribution({
-          targets: ['webgl2', 'webgl1'],
-          antialias: true,
-          shaderDebug: true,
-          trackResources: false,
-          onContextCreationError: () => {},
-          onContextLost: () => {},
-          onContextRestored(e) {},
-        });
-      } else {
-        deviceContribution = new WebGPUDeviceContribution({
-          shaderCompilerPath,
-          onContextLost: () => {},
-        });
-      }
-
-      const { width, height } = canvas;
-      const swapChain = await deviceContribution.createSwapChain(
-        canvas as HTMLCanvasElement,
-      );
-      swapChain.configureSwapChain(width, height);
-
-      this.#swapChain = swapChain;
-      this.#device = swapChain.getDevice();
-      this.#batchManager = new BatchManager(this.#device);
-
-      this.#renderTarget = this.#device.createRenderTargetFromTexture(
-        this.#device.createTexture({
-          format: Format.U8_RGBA_RT,
-          width,
-          height,
-          usage: TextureUsage.RENDER_TARGET,
-        }),
-      );
-      this.#depthRenderTarget = this.#device.createRenderTargetFromTexture(
-        this.#device.createTexture({
-          format: Format.D24_S8,
-          width,
-          height,
-          usage: TextureUsage.RENDER_TARGET,
-        }),
-      );
-
-      const [buffer, legacyObject] = updateUniform(true);
-      this.#uniformBuffer = this.#device.createBuffer({
-        viewOrSize: buffer,
-        usage: BufferUsage.UNIFORM,
-        hint: BufferFrequencyHint.DYNAMIC,
+      if (this.#destroyed)
+        throw new Error('Canvas destroyed before GPU initialization');
+      const cancelled = new Promise<never>((_, reject) => {
+        this.#cancelInitialization = () =>
+          reject(new Error('Canvas destroyed before GPU initialization'));
       });
-      this.#uniformLegacyObject = legacyObject;
+      const initialize = async () => {
+        let deviceContribution: DeviceContribution;
+        if (renderer === 'webgl') {
+          deviceContribution = new WebGLDeviceContribution({
+            targets: ['webgl2', 'webgl1'],
+            antialias: true,
+            shaderDebug: true,
+            trackResources: false,
+            onContextCreationError: () => {},
+            onContextLost: () => {},
+            onContextRestored(e) {},
+          });
+        } else {
+          deviceContribution = new WebGPUDeviceContribution({
+            shaderCompilerPath,
+            onContextLost: () => {},
+          });
+        }
 
-      this.#grid = new Grid();
+        const { width, height } = canvas;
+        const swapChain = await deviceContribution.createSwapChain(
+          canvas as HTMLCanvasElement,
+        );
+        if (!swapChain)
+          throw new Error('Unable to create canvas GPU swap chain');
+        if (this.#destroyed) {
+          // Acquisition cannot be aborted by this backend. The completed device
+          // still belongs to us even though the caller's wait is already cancelled.
+          const device = swapChain.getDevice();
+          try {
+            device.destroy();
+            device.checkForLeaks();
+          } catch (error) {
+            console.error('Failed to release cancelled canvas device', error);
+          }
+          throw new Error('Canvas destroyed before GPU initialization');
+        }
+        this.#swapChain = swapChain;
+        this.#device = swapChain.getDevice();
+        swapChain.configureSwapChain(width, height);
+        if (this.#destroyed)
+          throw new Error('Canvas destroyed before GPU initialization');
+        this.#batchManager = new BatchManager(this.#device);
+
+        this.#renderTarget = this.#device.createRenderTargetFromTexture(
+          this.#device.createTexture({
+            format: Format.U8_RGBA_RT,
+            width,
+            height,
+            usage: TextureUsage.RENDER_TARGET,
+          }),
+        );
+        this.#depthRenderTarget = this.#device.createRenderTargetFromTexture(
+          this.#device.createTexture({
+            format: Format.D24_S8,
+            width,
+            height,
+            usage: TextureUsage.RENDER_TARGET,
+          }),
+        );
+
+        const [buffer, legacyObject] = updateUniform(true);
+        this.#uniformBuffer = this.#device.createBuffer({
+          viewOrSize: buffer,
+          usage: BufferUsage.UNIFORM,
+          hint: BufferFrequencyHint.DYNAMIC,
+        });
+        this.#uniformLegacyObject = legacyObject;
+
+        this.#grid = new Grid();
+      };
+      try {
+        await Promise.race([initialize(), cancelled]);
+      } finally {
+        this.#cancelInitialization = undefined;
+      }
     });
 
     hooks.resize.tap((width, height) => {
@@ -214,13 +244,16 @@ export class Renderer implements Plugin {
     });
 
     hooks.destroy.tap(() => {
-      this.#batchManager.destroy();
-      this.#uniformBuffer.destroy();
-      this.#grid.destroy();
-      this.#renderTarget.destroy();
-      this.#depthRenderTarget.destroy();
-      this.#device.destroy();
-      this.#device.checkForLeaks();
+      if (this.#destroyed) return;
+      this.#destroyed = true;
+      this.#cancelInitialization?.();
+      this.#batchManager?.destroy();
+      this.#uniformBuffer?.destroy();
+      this.#grid?.destroy();
+      this.#renderTarget?.destroy();
+      this.#depthRenderTarget?.destroy();
+      this.#device?.destroy();
+      this.#device?.checkForLeaks();
     });
 
     hooks.beginFrame.tap(() => {

@@ -1,3 +1,4 @@
+import { CanvasInitialization } from './resources/CanvasInitialization';
 import { Entity, type ComponentType } from '@lastolivegames/becsy';
 import { hitTestTextPath } from './utils/glyph/measure-text-path';
 import { IPointData } from '@pixi/math';
@@ -377,6 +378,7 @@ export class API {
   #flushingEdits = false;
   #afterDeleteTasks = new TaskQueue();
   #destroyed = false;
+  #initialization?: CanvasInitialization;
   #scope = new ResourceScope();
   #activeImageTasks = 0;
   #subscribers = new Set<
@@ -1118,20 +1120,38 @@ export class API {
   }
 
   /**
-   * Create a new canvas.
+   * Resolves with this API after the default renderer attaches this canvas's
+   * GPU resources. Rejects on initialization failure or destruction while pending.
+   * App.run() alone only guarantees a running World, not a ready device/frame.
    */
-  createCanvas(canvasProps: Partial<Canvas>) {
-    this.#canvas = this.commands
-      .spawn(
-        new Canvas({
-          ...canvasProps,
-          api: this,
-        }),
-      )
-      .id()
-      .hold();
+  get initialized(): Promise<this> {
+    if (!this.#initialization)
+      return Promise.reject(new Error('Canvas has not been created'));
+    return this.#initialization.promise.then(() => this);
+  }
 
-    this.commands.execute();
+  /** Create a canvas; await initialized outside ECS execution to use its device. */
+  createCanvas(canvasProps: Partial<Canvas>) {
+    if (this.#destroyed) throw new Error('Canvas has been destroyed');
+    const initialization = new CanvasInitialization();
+    this.#initialization = initialization;
+    try {
+      this.#canvas = this.commands
+        .spawn(
+          new Canvas({
+            ...canvasProps,
+            api: this,
+            initialization,
+          }),
+        )
+        .id()
+        .hold();
+
+      this.commands.execute();
+    } catch (error) {
+      initialization.reject(error);
+      throw error;
+    }
 
     return this.#canvas;
   }
@@ -3787,6 +3807,7 @@ export class API {
   destroy() {
     if (this.#destroyed) return;
     this.#destroyed = true;
+    this.#initialization?.cancel();
     this.#pendingCameraView = undefined;
     this.#edits.dispose();
     this.#editTasks.dispose();

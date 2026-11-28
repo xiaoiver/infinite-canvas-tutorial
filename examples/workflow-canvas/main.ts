@@ -68,6 +68,7 @@ function setBusy(value: boolean) {
   });
 }
 function applyView(next: View) {
+  if (!engine) return;
   view = next;
   if (busy) engine.prepareView(view);
   else void engine.view(view).catch(reportError);
@@ -748,7 +749,7 @@ window.workflowDemo = {
     edges: graph.edges.length,
     selected: selected?.id,
     view: { ...view },
-    ready: Boolean(engine) && !busy,
+    ready: Boolean(engine) && !busy && !disposed,
     frames: engine?.frameCount ?? 0,
     renderedNodes: engine?.counts().nodes ?? 0,
     renderedEdges: engine?.counts().edges ?? 0,
@@ -756,6 +757,7 @@ window.workflowDemo = {
   }),
 };
 async function start() {
+  setBusy(true);
   paintLandscape(art.getContext('2d')!, 0, 0, art.width, art.height);
   engine = await createEngine(canvas, await createCardTextures());
   busy = false;
@@ -763,9 +765,27 @@ async function start() {
   raf = requestAnimationFrame(tick);
 }
 void start().catch((error) => {
+  setBusy(true);
+  // Keep failure visible. UI counters from an empty World are not render samples.
+  $('#node-status').textContent = 'ERROR';
+  $('#metrics-state').textContent = '渲染不可用';
+  $('#fps').textContent = '—';
+  $('#frame-time').textContent = '—';
+  result.hidden = true;
+  document
+    .querySelectorAll<
+      | HTMLInputElement
+      | HTMLButtonElement
+      | HTMLSelectElement
+      | HTMLTextAreaElement
+    >('button, select, input, textarea')
+    .forEach((control) => {
+      if (!['help', 'about', 'close-help'].includes(control.id))
+        control.disabled = true;
+    });
   loading.hidden = false;
   loading.classList.add('failed');
-  loading.textContent = `画布启动失败。请确认浏览器支持 WebGL 2。\n${
+  loading.textContent = `画布启动失败。请检查浏览器的 WebGL 支持及图形加速设置。\n${
     error instanceof Error ? error.message : String(error)
   }`;
   reportError(error);

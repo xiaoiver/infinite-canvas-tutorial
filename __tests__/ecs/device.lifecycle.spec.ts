@@ -1,3 +1,4 @@
+import { CanvasInitialization } from '../../packages/ecs/src/resources/CanvasInitialization';
 import { SetupDevice } from '../../packages/ecs/src/systems/SetupDevice';
 import { Canvas, GPUResource, Theme } from '../../packages/ecs/src/components';
 import { ResourceScope } from '../../packages/ecs/src/resources/ResourceScope';
@@ -25,8 +26,10 @@ jest.mock('../../packages/ecs/src/resources', () => ({
 jest.mock('../../packages/ecs/src/render-graph/RenderGraph', () => ({}));
 
 function fixture() {
+  const initialization = new CanvasInitialization();
   const components = new Map<any, any>();
   components.set(Canvas, {
+    initialization,
     renderer: 'webgl',
     width: 100,
     height: 100,
@@ -43,8 +46,10 @@ function fixture() {
   mockQuery = { added: [canvas], removed: [], changed: [], current: [canvas] };
   const system = new SetupDevice();
   let resolve: (resource: any) => void;
-  const promise = new Promise<any>((r) => {
+  let reject: (reason: unknown) => void;
+  const promise = new Promise<any>((r, fail) => {
     resolve = r;
+    reject = fail;
   });
   jest.spyOn(system as any, 'createGPUResource').mockReturnValue(promise);
   const scope = new ResourceScope();
@@ -56,6 +61,8 @@ function fixture() {
     canvas,
     resource,
     release,
+    initialization,
+    reject: (error: unknown) => reject(error),
     resolve: () => resolve(resource),
   };
 }
@@ -159,5 +166,142 @@ it('preserves an explicitly installed palette during GPU initialization', async 
     expect(f.canvas.read(Theme)).toBe(theme);
   } finally {
     f.system.finalize();
+  }
+});
+
+it('keeps readiness pending until resources are attached in the owning execute phase', async () => {
+  const f = fixture();
+  let ready = false;
+  const pending = f.initialization.promise.then(() => {
+    ready = true;
+  });
+  f.system.execute();
+  f.resolve();
+  await Promise.resolve();
+  expect(ready).toBe(false);
+  mockQuery.added = [];
+  f.system.execute();
+  await pending;
+  expect(f.canvas.has(GPUResource)).toBe(true);
+  f.system.finalize();
+});
+
+it('rejects asynchronous device failures with the original cause and never attaches them', async () => {
+  const f = fixture(),
+    error = new Error('device rejected');
+  const log = jest.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    const check = expect(f.initialization.promise).rejects.toBe(error);
+    f.system.execute();
+    f.reject(error);
+    await check;
+    mockQuery.added = [];
+    f.system.execute();
+    expect(f.canvas.has(GPUResource)).toBe(false);
+    expect(log).toHaveBeenCalledWith(
+      'Failed to initialize canvas GPU resources',
+      error,
+    );
+  } finally {
+    f.system.finalize();
+    log.mockRestore();
+  }
+});
+
+it('rejects attachment-time configuration failure and releases the resource exactly once', async () => {
+  const f = fixture(),
+    error = new Error('late resize rejected');
+  const log = jest.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    const check = expect(f.initialization.promise).rejects.toBe(error);
+    f.system.execute();
+    f.resolve();
+    await Promise.resolve();
+    f.resource.swapChain.configureSwapChain.mockImplementation(() => {
+      throw error;
+    });
+    mockQuery.added = [];
+    expect(() => f.system.execute()).not.toThrow();
+    await check;
+    expect(f.canvas.has(GPUResource)).toBe(false);
+    expect(f.release).toHaveBeenCalledTimes(1);
+    f.system.execute();
+    f.system.finalize();
+    expect(f.release).toHaveBeenCalledTimes(1);
+  } finally {
+    f.system.finalize();
+    log.mockRestore();
+  }
+});
+
+it.each(['remove', 'exit'])(
+  'rejects pending readiness on %s and ignores late success',
+  async (action) => {
+    const f = fixture();
+    const check = expect(f.initialization.promise).rejects.toThrow(
+      'destroyed before GPU',
+    );
+    f.system.execute();
+    mockQuery.added = [];
+    if (action === 'remove') {
+      mockQuery.removed = [f.canvas];
+      f.system.execute();
+    } else f.system.finalize();
+    await check;
+    f.resolve();
+    await Promise.resolve();
+    expect(f.canvas.has(GPUResource)).toBe(false);
+    expect(f.release).toHaveBeenCalledTimes(1);
+    f.system.finalize();
+  },
+);
+
+it('does not report a late rejection after cancellation as a live canvas failure', async () => {
+  const f = fixture();
+  const log = jest.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    const check = expect(f.initialization.promise).rejects.toThrow(
+      'destroyed before GPU',
+    );
+    f.system.execute();
+    f.system.finalize();
+    await check;
+    f.reject(new Error('late failure'));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(log).not.toHaveBeenCalled();
+  } finally {
+    log.mockRestore();
+  }
+});
+
+it('keeps the original attachment error when cleanup also fails and leaves no retry', async () => {
+  const f = fixture(),
+    error = new Error('attachment failed');
+  const log = jest.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    const check = expect(f.initialization.promise).rejects.toBe(error);
+    f.system.execute();
+    f.resolve();
+    await Promise.resolve();
+    f.resource.swapChain.configureSwapChain.mockImplementation(() => {
+      throw error;
+    });
+    f.release.mockImplementation(() => {
+      throw new Error('release failed');
+    });
+    mockQuery.added = [];
+    expect(() => f.system.execute()).not.toThrow();
+    await check;
+    f.system.execute();
+    f.system.finalize();
+    expect(f.release).toHaveBeenCalledTimes(1);
+    expect(log).toHaveBeenCalledWith(
+      'Failed to release uninitialized canvas resources',
+      expect.any(AggregateError),
+    );
+  } finally {
+    f.system.finalize();
+    log.mockRestore();
   }
 });

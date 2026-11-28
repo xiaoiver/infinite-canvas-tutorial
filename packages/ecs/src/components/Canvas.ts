@@ -1,3 +1,4 @@
+import type { CanvasInitialization } from '../resources/CanvasInitialization';
 import { Entity, field, Type } from '@lastolivegames/becsy';
 import { Camera } from './camera';
 import { InputPoint } from './Input';
@@ -42,6 +43,9 @@ export enum VectorNetworkEditMode {
 }
 
 export class Canvas {
+  /** @internal Runtime-only readiness owned by API/SetupDevice; never serialized. */
+  @field.object declare initialization: CanvasInitialization;
+
   /** Experimental ordered image rectangles. Runtime only; defaults off. */
   @field({ type: Type.boolean, default: false }) declare imageBatching: boolean;
   /** Experimental full ordinary-text screen batching. Runtime only; defaults off. */

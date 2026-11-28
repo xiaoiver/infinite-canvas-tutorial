@@ -24,6 +24,7 @@ export default defineConfig({
     'stroke-batching.spec.ts',
     'camera-replay.spec.ts',
     'drawing-buffer.spec.ts',
+    'gpu-readiness.spec.ts',
     'core-text-lifetime.spec.ts',
     'glyph-atlas.spec.ts',
     'glyph-sharing.spec.ts',

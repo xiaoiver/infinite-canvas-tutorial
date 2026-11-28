@@ -47,6 +47,26 @@ one. Calling `new App()` preserves the existing defaults. Smaller budgets reduce
 ECS allocation; they do not change GPU texture or geometry memory, or allow
 concurrent Apps sharing component types in the same JavaScript environment.
 
+## Waiting for GPU readiness {#gpu-readiness}
+
+`await app.run()` starts the ECS World. Device initialization continues asynchronously.
+With the default WebGL/WebGPU renderer, use `await api.initialized` after the API has
+created its canvas, **outside** a System's `initialize()` / `execute()` method.
+It resolves to that API only after `GPUResource` is attached, and rejects with the
+original initialization error (including shared offscreen-device errors). Destroying
+or removing a still-pending canvas rejects the wait instead of leaving it hanging.
+A later successful initialization cannot revive a cancelled wait. Each canvas owns
+its result; a screen-device failure does not fail another healthy canvas.
+
+This opt-in lifecycle promise neither waits for a scene frame nor certifies GPU
+completion, presentation or later context-loss recovery. Custom device systems own
+their readiness contract. Existing applications that do not await it retain the
+existing error log. Do not derive renderer readiness/FPS from a running empty World.
+Core already exposes `Canvas.initialized`; retain the Canvas handle and call
+`destroy()` when initialization fails to release its listeners/partial resources.
+Destroying a pending Core canvas rejects its wait immediately and releases any
+device that arrives later, without configuring or reviving that canvas.
+
 ## Using WebComponents {#use-webcomponents}
 
 First, import the component library:
